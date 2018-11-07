@@ -50,7 +50,7 @@ private:
     ros::Publisher pubSurfPointsFlat;
     ros::Publisher pubSurfPointsLessFlat;
 
-    pcl::PointCloud<PointType>::Ptr segmentedCloud;
+    pcl::PointCloud<PointType>::Ptr segmentedCloud; // seg + ground (sparase)
     pcl::PointCloud<PointType>::Ptr outlierCloud;
 
     pcl::PointCloud<PointType>::Ptr cornerPointsSharp;
@@ -409,7 +409,7 @@ public:
             imuVeloY[imuPointerLast] = imuVeloY[imuPointerBack] + accY * timeDiff;
             imuVeloZ[imuPointerLast] = imuVeloZ[imuPointerBack] + accZ * timeDiff;
 
-            imuAngularRotationX[imuPointerLast] = imuAngularRotationX[imuPointerBack] + imuAngularVeloX[imuPointerBack] * timeDiff;
+            imuAngularRotationX[imuPointerLast] = imuAngularRotationX[imuPointerBack] + imuAngularVeloX[imuPointerBack] * timeDiff; // imu angular
             imuAngularRotationY[imuPointerLast] = imuAngularRotationY[imuPointerBack] + imuAngularVeloY[imuPointerBack] * timeDiff;
             imuAngularRotationZ[imuPointerLast] = imuAngularRotationZ[imuPointerBack] + imuAngularVeloZ[imuPointerBack] * timeDiff;
         }
@@ -595,6 +595,7 @@ public:
 
                     updateImuRollPitchYawStartSinCos();
                 } else {
+                    // ShiftToStartIMU(pointTime);
                     VeloToStartIMU();
                     TransformToStartIMU(&point);
                 }
@@ -689,8 +690,9 @@ public:
                 for (int k = ep; k >= sp; k--) {
                     int ind = cloudSmoothness[k].ind;
                     if (cloudNeighborPicked[ind] == 0 &&
-                        cloudCurvature[ind] > edgeThreshold &&
-                        segInfo.segmentedCloudGroundFlag[ind] == false) {
+                        cloudCurvature[ind] > edgeThreshold 
+                        // segInfo.segmentedCloudGroundFlag[ind] == false) {
+                    ){
                     
                         largestPickedNum++;
                         if (largestPickedNum <= 2) {
@@ -724,8 +726,9 @@ public:
                 for (int k = sp; k <= ep; k++) {
                     int ind = cloudSmoothness[k].ind;
                     if (cloudNeighborPicked[ind] == 0 &&
-                        cloudCurvature[ind] < surfThreshold &&
-                        segInfo.segmentedCloudGroundFlag[ind] == true) {
+                        cloudCurvature[ind] < surfThreshold 
+                        // segInfo.segmentedCloudGroundFlag[ind] == true) {
+                    ){
 
                         cloudLabel[ind] = -1;
                         surfPointsFlat->push_back(segmentedCloud->points[ind]);
@@ -1661,25 +1664,45 @@ public:
 
             findCorrespondingSurfFeatures(iterCount1);
 
-            if (laserCloudOri->points.size() < 10)
-                continue;
-            if (calculateTransformationSurf(iterCount1) == false)
-                break;
-        }
-
-        for (int iterCount2 = 0; iterCount2 < 25; iterCount2++) {
-
-            laserCloudOri->clear();
-            coeffSel->clear();
-
-            findCorrespondingCornerFeatures(iterCount2);
+            findCorrespondingCornerFeatures(iterCount1);
 
             if (laserCloudOri->points.size() < 10)
                 continue;
-            if (calculateTransformationCorner(iterCount2) == false)
+            if (calculateTransformation(iterCount1) == false)
                 break;
         }
     }
+
+    // void updateTransformation(){
+
+    //     if (laserCloudCornerLastNum < 10 || laserCloudSurfLastNum < 100)
+    //         return;
+
+    //     for (int iterCount1 = 0; iterCount1 < 25; iterCount1++) {
+    //         laserCloudOri->clear();
+    //         coeffSel->clear();
+
+    //         findCorrespondingSurfFeatures(iterCount1);
+
+    //         if (laserCloudOri->points.size() < 10)
+    //             continue;
+    //         if (calculateTransformationSurf(iterCount1) == false)
+    //             break;
+    //     }
+
+    //     for (int iterCount2 = 0; iterCount2 < 25; iterCount2++) {
+
+    //         laserCloudOri->clear();
+    //         coeffSel->clear();
+
+    //         findCorrespondingCornerFeatures(iterCount2);
+
+    //         if (laserCloudOri->points.size() < 10)
+    //             continue;
+    //         if (calculateTransformationCorner(iterCount2) == false)
+    //             break;
+    //     }
+    // }
 
     void integrateTransformation(){
         float rx, ry, rz, tx, ty, tz;
@@ -1801,6 +1824,7 @@ public:
         }
     }
 
+// hz = lidarhandle
     void runFeatureAssociation()
     {
 
@@ -1815,9 +1839,9 @@ public:
             return;
         }
 
-        adjustDistortion();
+        adjustDistortion(); // pre regist
 
-        calculateSmoothness();
+        calculateSmoothness(); // smooth
 
         markOccludedPoints();
 
@@ -1830,7 +1854,7 @@ public:
             return;
         }
 
-        updateInitialGuess();
+        updateInitialGuess(); // vel angular correct
 
         updateTransformation();
 

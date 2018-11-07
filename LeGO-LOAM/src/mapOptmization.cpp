@@ -157,6 +157,8 @@ private:
     pcl::VoxelGrid<PointType> downSizeFilterGlobalMapKeyPoses;
     pcl::VoxelGrid<PointType> downSizeFilterGlobalMapKeyFrames;
 
+    ros::Time _timeLaserOdometry;
+
     double timeLaserCloudCornerLast;
     double timeLaserCloudSurfLast;
     double timeLaserOdometry;
@@ -207,6 +209,9 @@ private:
     int laserCloudSurfLastDSNum;
     int laserCloudOutlierLastDSNum;
     int laserCloudSurfTotalLastDSNum;
+
+    int _mapcount = 0;
+    int _mapnum = 5;
 
     bool potentialLoopFlag;
     double timeSaveFirstCurrentScanForLoopClosure;
@@ -369,6 +374,7 @@ public:
         aLoopIsClosed = false;
 
         latestFrameID = 0;
+        _mapcount = _mapnum - 1;
     }
 
     void transformAssociateToMap()
@@ -625,6 +631,7 @@ public:
 
     void laserOdometryHandler(const nav_msgs::Odometry::ConstPtr& laserOdometry){
         timeLaserOdometry = laserOdometry->header.stamp.toSec();
+        _timeLaserOdometry = laserOdometry->header.stamp;
         double roll, pitch, yaw;
         geometry_msgs::Quaternion geoQuat = laserOdometry->pose.pose.orientation;
         tf::Matrix3x3(tf::Quaternion(geoQuat.z, -geoQuat.x, -geoQuat.y, geoQuat.w)).getRPY(roll, pitch, yaw);
@@ -695,7 +702,7 @@ public:
     }
 
     void visualizeGlobalMapThread(){
-        ros::Rate rate(0.2);
+        ros::Rate rate(1);
         while (ros::ok()){
             rate.sleep();
             publishGlobalMap();
@@ -704,12 +711,18 @@ public:
 
     void publishGlobalMap(){
 
+        _mapcount++;
+            // std::cout << "test000" << std::endl;
+        // if (_mapcount >= _mapnum) {
+
+        //     std::cout << "test111" << std::endl;
         if (pubLaserCloudSurround.getNumSubscribers() == 0)
             return;
 
         if (cloudKeyPoses3D->points.empty() == true)
             return;
 
+        _mapcount = 0;
         std::vector<int> pointSearchIndGlobalMap;
         std::vector<float> pointSearchSqDisGlobalMap;
 
@@ -736,7 +749,8 @@ public:
  
         sensor_msgs::PointCloud2 cloudMsgTemp;
         pcl::toROSMsg(*globalMapKeyFramesDS, cloudMsgTemp);
-        cloudMsgTemp.header.stamp = ros::Time().fromSec(timeLaserOdometry);
+        // cloudMsgTemp.header.stamp = ros::Time().fromSec(timeLaserOdometry);
+        cloudMsgTemp.header.stamp = _timeLaserOdometry;
         cloudMsgTemp.header.frame_id = "/camera_init";
         pubLaserCloudSurround.publish(cloudMsgTemp);  
 
@@ -744,7 +758,7 @@ public:
         globalMapKeyPosesDS->clear();
         globalMapKeyFrames->clear();
         globalMapKeyFramesDS->clear();     
-    }
+        }
 
     void loopClosureThread(){
 
@@ -1442,6 +1456,8 @@ public:
                 correctPoses();
 
                 publishTF();
+
+                // publishGlobalMap();
 
                 publishKeyPosesAndFrames();
 

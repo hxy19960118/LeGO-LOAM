@@ -7,6 +7,7 @@
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
 
 #include "cloud_msgs/cloud_info.h"
 
@@ -68,6 +69,7 @@ extern const string imuTopic = "/imu/data";
 
 extern const float sensorMountAngle = 0.0;
 extern const float segmentTheta = 1.0472;
+// extern const float segmentTheta = 0.3745;
 extern const int segmentValidPointNum = 5;
 extern const int segmentValidLineNum = 3;
 extern const float segmentAlphaX = ang_res_x / 180.0 * M_PI;

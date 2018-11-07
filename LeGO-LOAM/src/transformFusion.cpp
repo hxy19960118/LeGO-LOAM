@@ -38,12 +38,14 @@ private:
 
     ros::NodeHandle nh;
 
+    ros::Publisher pubLaserOdometry2path;
     ros::Publisher pubLaserOdometry2;
     ros::Subscriber subLaserOdometry;
     ros::Subscriber subOdomAftMapped;
   
 
     nav_msgs::Odometry laserOdometry2;
+    nav_msgs::Path _path;
     tf::StampedTransform laserOdometryTrans2;
     tf::TransformBroadcaster tfBroadcaster2;
 
@@ -66,20 +68,23 @@ public:
     TransformFusion(){
 
         pubLaserOdometry2 = nh.advertise<nav_msgs::Odometry> ("/integrated_to_init", 5);
+        pubLaserOdometry2path = nh.advertise<nav_msgs::Path> ("/path_to_init", 5);
         subLaserOdometry = nh.subscribe<nav_msgs::Odometry>("/laser_odom_to_init", 5, &TransformFusion::laserOdometryHandler, this);
         subOdomAftMapped = nh.subscribe<nav_msgs::Odometry>("/aft_mapped_to_init", 5, &TransformFusion::odomAftMappedHandler, this);
 
         laserOdometry2.header.frame_id = "/camera_init";
         laserOdometry2.child_frame_id = "/camera";
 
+        _path.header.frame_id = "camera_init";
+
         laserOdometryTrans2.frame_id_ = "/camera_init";
         laserOdometryTrans2.child_frame_id_ = "/camera";
 
-        map_2_camera_init_Trans.frame_id_ = "/map";
-        map_2_camera_init_Trans.child_frame_id_ = "/camera_init";
+        // map_2_camera_init_Trans.frame_id_ = "/map";
+        // map_2_camera_init_Trans.child_frame_id_ = "/camera_init";
 
-        camera_2_base_link_Trans.frame_id_ = "/camera";
-        camera_2_base_link_Trans.child_frame_id_ = "/base_link";
+        // camera_2_base_link_Trans.frame_id_ = "/camera";
+        // camera_2_base_link_Trans.child_frame_id_ = "/base_link";
 
         for (int i = 0; i < 6; ++i)
         {
@@ -208,6 +213,22 @@ public:
         laserOdometry2.pose.pose.position.y = transformMapped[4];
         laserOdometry2.pose.pose.position.z = transformMapped[5];
         pubLaserOdometry2.publish(laserOdometry2);
+
+        geometry_msgs::PoseStamped this_pose_stamped;
+        this_pose_stamped.header.frame_id = "/camera_init";
+        //    this_pose_stamped.header.child_frame_id = "/camera";
+        this_pose_stamped.header.stamp = laserOdometry->header.stamp;
+        this_pose_stamped.pose.orientation.x = -geoQuat.y;
+        this_pose_stamped.pose.orientation.y = -geoQuat.z;
+        this_pose_stamped.pose.orientation.z = geoQuat.x;
+        this_pose_stamped.pose.orientation.w = geoQuat.w;
+        this_pose_stamped.pose.position.x = transformMapped[3];
+        this_pose_stamped.pose.position.y = transformMapped[4];
+        this_pose_stamped.pose.position.z = transformMapped[5];
+
+        _path.poses.push_back(this_pose_stamped);
+
+        pubLaserOdometry2path.publish(_path);
 
         laserOdometryTrans2.stamp_ = laserOdometry->header.stamp;
         laserOdometryTrans2.setRotation(tf::Quaternion(-geoQuat.y, -geoQuat.z, geoQuat.x, geoQuat.w));

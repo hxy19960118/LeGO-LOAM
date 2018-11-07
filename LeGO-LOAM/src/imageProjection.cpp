@@ -40,24 +40,24 @@ private:
     ros::Publisher pubFullInfoCloud;
 
     ros::Publisher pubGroundCloud;
-    ros::Publisher pubSegmentedCloud;
-    ros::Publisher pubSegmentedCloudPure;
+    ros::Publisher pubSegmentedCloud; // seg + ground (sparase) pub
+    ros::Publisher pubSegmentedCloudPure; // seg points pub
     ros::Publisher pubSegmentedCloudInfo;
     ros::Publisher pubOutlierCloud;
 
-    pcl::PointCloud<PointType>::Ptr laserCloudIn;
+    pcl::PointCloud<PointType>::Ptr laserCloudIn; // raw lidar data
 
     pcl::PointCloud<PointType>::Ptr fullCloud;
     pcl::PointCloud<PointType>::Ptr fullInfoCloud;
 
     pcl::PointCloud<PointType>::Ptr groundCloud;
-    pcl::PointCloud<PointType>::Ptr segmentedCloud;
-    pcl::PointCloud<PointType>::Ptr segmentedCloudPure;
+    pcl::PointCloud<PointType>::Ptr segmentedCloud; // seg + ground (sparase) points
+    pcl::PointCloud<PointType>::Ptr segmentedCloudPure; // seg points
     pcl::PointCloud<PointType>::Ptr outlierCloud;
 
     PointType nanPoint;
 
-    cv::Mat rangeMat;
+    cv::Mat rangeMat; // range image
     cv::Mat labelMat;
     cv::Mat groundMat;
     int labelCount;
@@ -66,7 +66,7 @@ private:
     float endOrientation;
 
     cloud_msgs::cloud_info segMsg;
-    std_msgs::Header cloudHeader;
+    std_msgs::Header cloudHeader; // lidar header
 
     std::vector<std::pair<uint8_t, uint8_t> > neighborIterator;
 
@@ -163,7 +163,7 @@ public:
 
         copyPointCloud(laserCloudMsg);
         findStartEndAngle();
-        projectPointCloud();
+        projectPointCloud(); // range image : range , row , col 
         groundRemoval();
         cloudSegmentation();
         publishCloud();
@@ -173,7 +173,7 @@ public:
     void findStartEndAngle(){
         segMsg.startOrientation = -atan2(laserCloudIn->points[0].y, laserCloudIn->points[0].x);
         segMsg.endOrientation   = -atan2(laserCloudIn->points[laserCloudIn->points.size() - 1].y,
-                                                     laserCloudIn->points[laserCloudIn->points.size() - 2].x) + 2 * M_PI;
+                                                     laserCloudIn->points[laserCloudIn->points.size() - 1].x) + 2 * M_PI;
         if (segMsg.endOrientation - segMsg.startOrientation > 3 * M_PI) {
             segMsg.endOrientation -= 2 * M_PI;
         } else if (segMsg.endOrientation - segMsg.startOrientation < M_PI)
@@ -195,12 +195,13 @@ public:
             thisPoint.z = laserCloudIn->points[i].z;
 
             verticalAngle = atan2(thisPoint.z, sqrt(thisPoint.x * thisPoint.x + thisPoint.y * thisPoint.y)) * 180 / M_PI;
-            rowIdn = (verticalAngle + ang_bottom) / ang_res_y;
+            rowIdn = (verticalAngle + ang_bottom) / ang_res_y; // 0 - 15 row
             if (rowIdn < 0 || rowIdn >= N_SCAN)
                 continue;
 
             horizonAngle = atan2(thisPoint.x, thisPoint.y) * 180 / M_PI;
 
+// +y:1350 ; +x : 900 ; -y : 450 ; -x:0(1799)
             if (horizonAngle <= -90)
                 columnIdn = -int(horizonAngle / ang_res_x) - 450; 
             else if (horizonAngle >= 0)
@@ -209,7 +210,7 @@ public:
                 columnIdn = 1350 - int(horizonAngle / ang_res_x);
 
             range = sqrt(thisPoint.x * thisPoint.x + thisPoint.y * thisPoint.y + thisPoint.z * thisPoint.z);
-            rangeMat.at<float>(rowIdn, columnIdn) = range;
+            rangeMat.at<float>(rowIdn, columnIdn) = range; // range image
 
             thisPoint.intensity = (float)rowIdn + (float)columnIdn / 10000.0;
 
@@ -228,8 +229,8 @@ public:
         for (size_t j = 0; j < Horizon_SCAN; ++j){
             for (size_t i = 0; i < groundScanInd; ++i){
 
-                lowerInd = j + ( i )*Horizon_SCAN;
-                upperInd = j + (i+1)*Horizon_SCAN;
+                lowerInd = j + ( i )*Horizon_SCAN; // i,j
+                upperInd = j + (i+1)*Horizon_SCAN; // i+1 , j
 
                 if (fullCloud->points[lowerInd].intensity == -1 ||
                     fullCloud->points[upperInd].intensity == -1){
@@ -279,8 +280,8 @@ public:
             segMsg.startRingIndex[i] = sizeOfSegCloud-1 + 5;
 
             for (size_t j = 0; j < Horizon_SCAN; ++j) {
-                if (labelMat.at<int>(i,j) > 0 || groundMat.at<int8_t>(i,j) == 1){
-                    if (labelMat.at<int>(i,j) == 999999){
+                if (labelMat.at<int>(i,j) > 0 || groundMat.at<int8_t>(i,j) == 1){ // label or ground
+                    if (labelMat.at<int>(i,j) == 999999){ // do not use label:999999
                         if (i > groundScanInd && j % 5 == 0){
                             outlierCloud->push_back(fullCloud->points[j + i*Horizon_SCAN]);
                             continue;
@@ -290,12 +291,12 @@ public:
                     }
                     if (groundMat.at<int8_t>(i,j) == 1){
                         if (j%5!=0 && j>5 && j<Horizon_SCAN-5)
-                            continue;
+                            continue; // sparase ground 1/5
                     }
                     segMsg.segmentedCloudGroundFlag[sizeOfSegCloud] = (groundMat.at<int8_t>(i,j) == 1);
                     segMsg.segmentedCloudColInd[sizeOfSegCloud] = j;
                     segMsg.segmentedCloudRange[sizeOfSegCloud]  = rangeMat.at<float>(i,j);
-                    segmentedCloud->push_back(fullCloud->points[j + i*Horizon_SCAN]);
+                    segmentedCloud->push_back(fullCloud->points[j + i*Horizon_SCAN]); // seg + ground(sparase)
                     ++sizeOfSegCloud;
                 }
             }
@@ -337,7 +338,7 @@ public:
             ++queueStartInd;
             labelMat.at<int>(fromIndX, fromIndY) = labelCount;
 
-            for (auto iter = neighborIterator.begin(); iter != neighborIterator.end(); ++iter){
+            for (auto iter = neighborIterator.begin(); iter != neighborIterator.end(); ++iter){ // left right down up
 
                 thisIndX = fromIndX + (*iter).first;
                 thisIndY = fromIndY + (*iter).second;
@@ -386,12 +387,12 @@ public:
         bool feasibleSegment = false;
         if (allPushedIndSize >= 30)
             feasibleSegment = true;
-        else if (allPushedIndSize >= segmentValidPointNum){
+        else if (allPushedIndSize >= segmentValidPointNum){ // 5 =< allPushedIndSize < 30
             int lineCount = 0;
             for (size_t i = 0; i < N_SCAN; ++i)
                 if (lineCountFlag[i] == true)
                     ++lineCount;
-            if (lineCount >= segmentValidLineNum)
+            if (lineCount >= segmentValidLineNum) //3
                 feasibleSegment = true;            
         }
 
