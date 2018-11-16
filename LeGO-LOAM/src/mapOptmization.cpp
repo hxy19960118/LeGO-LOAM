@@ -705,7 +705,7 @@ public:
         ros::Rate rate(1);
         while (ros::ok()){
             rate.sleep();
-            publishGlobalMap();
+            // publishGlobalMap();
         }
     }
 
@@ -726,19 +726,22 @@ public:
         std::vector<int> pointSearchIndGlobalMap;
         std::vector<float> pointSearchSqDisGlobalMap;
 
-        mtx.lock();
+/*----------------------------------------- pose kd-tree --------------------------*/
+        // mtx.lock();
         kdtreeGlobalMap->setInputCloud(cloudKeyPoses3D);
         kdtreeGlobalMap->radiusSearch(currentRobotPosPoint, globalMapVisualizationSearchRadius, pointSearchIndGlobalMap, pointSearchSqDisGlobalMap, 0);
-        mtx.unlock();
+        // mtx.unlock();
 
         for (int i = 0; i < pointSearchIndGlobalMap.size(); ++i)
           globalMapKeyPoses->points.push_back(cloudKeyPoses3D->points[pointSearchIndGlobalMap[i]]);
 
-        downSizeFilterGlobalMapKeyPoses.setInputCloud(globalMapKeyPoses);
-        downSizeFilterGlobalMapKeyPoses.filter(*globalMapKeyPosesDS);
+        // downSizeFilterGlobalMapKeyPoses.setInputCloud(globalMapKeyPoses);
+        // downSizeFilterGlobalMapKeyPoses.filter(*globalMapKeyPosesDS);
 
-        for (int i = 0; i < globalMapKeyPosesDS->points.size(); ++i){
-			int thisKeyInd = (int)globalMapKeyPosesDS->points[i].intensity;
+        for (int i = 0; i < globalMapKeyPoses->points.size(); ++i){
+        // for (int i = 0; i < globalMapKeyPosesDS->points.size(); ++i){
+			// int thisKeyInd = (int)globalMapKeyPosesDS->points[i].intensity;
+			int thisKeyInd = (int)globalMapKeyPoses->points[i].intensity;
 			*globalMapKeyFrames += *transformPointCloud(cornerCloudKeyFrames[thisKeyInd],   &cloudKeyPoses6D->points[thisKeyInd]);
 			*globalMapKeyFrames += *transformPointCloud(surfCloudKeyFrames[thisKeyInd],    &cloudKeyPoses6D->points[thisKeyInd]);
 			*globalMapKeyFrames += *transformPointCloud(outlierCloudKeyFrames[thisKeyInd], &cloudKeyPoses6D->points[thisKeyInd]);
@@ -758,7 +761,7 @@ public:
         globalMapKeyPosesDS->clear();
         globalMapKeyFrames->clear();
         globalMapKeyFramesDS->clear();     
-        }
+    }
 
     void loopClosureThread(){
 
@@ -783,13 +786,14 @@ public:
         std::vector<int> pointSearchIndLoop;
         std::vector<float> pointSearchSqDisLoop;
         kdtreeHistoryKeyPoses->setInputCloud(cloudKeyPoses3D);
-        kdtreeHistoryKeyPoses->radiusSearch(currentRobotPosPoint, historyKeyframeSearchRadius, pointSearchIndLoop, pointSearchSqDisLoop, 0);
+        kdtreeHistoryKeyPoses->radiusSearch(currentRobotPosPoint, historyKeyframeSearchRadius, pointSearchIndLoop, pointSearchSqDisLoop, 0); // find 5m pose
         
         closestHistoryFrameID = -1;
         for (int i = 0; i < pointSearchIndLoop.size(); ++i){
             int id = pointSearchIndLoop[i];
             if (abs(cloudKeyPoses6D->points[id].time - timeLaserOdometry) > 30.0){
-                closestHistoryFrameID = id;
+                closestHistoryFrameID = id; // in 5m pose and points
+                // std::cout<< "ID: " << closestHistoryFrameID << std::endl;
                 break;
             }
         }
@@ -809,9 +813,9 @@ public:
             }
         }
         latestSurfKeyFrameCloud->clear();
-        *latestSurfKeyFrameCloud   = *hahaCloud;
+        *latestSurfKeyFrameCloud   = *hahaCloud; // lastest pose points
 
-        for (int j = -historyKeyframeSearchNum; j <= historyKeyframeSearchNum; ++j){
+        for (int j = -historyKeyframeSearchNum; j <= historyKeyframeSearchNum; ++j){ // search 50 pose points (front 25; back 25)
             if (closestHistoryFrameID + j < 0 || closestHistoryFrameID + j > latestFrameIDLoopCloure)
                 continue;
             *nearHistorySurfKeyFrameCloud += *transformPointCloud(cornerCloudKeyFrames[closestHistoryFrameID+j], &cloudKeyPoses6D->points[closestHistoryFrameID+j]);
@@ -819,7 +823,7 @@ public:
         }
 
         downSizeFilterHistoryKeyFrames.setInputCloud(nearHistorySurfKeyFrameCloud);
-        downSizeFilterHistoryKeyFrames.filter(*nearHistorySurfKeyFrameCloudDS);
+        downSizeFilterHistoryKeyFrames.filter(*nearHistorySurfKeyFrameCloudDS); // 50 pose points
 
         if (pubHistoryKeyFrames.getNumSubscribers() != 0){
             sensor_msgs::PointCloud2 cloudMsgTemp;
@@ -842,6 +846,7 @@ public:
 
             if (detectLoopClosure() == true){
                 potentialLoopFlag = true;
+                // std::cout<< "test" << std::endl;
                 timeSaveFirstCurrentScanForLoopClosure = timeLaserOdometry;
             }
             if (potentialLoopFlag == false)
@@ -1303,11 +1308,11 @@ public:
 
     void saveKeyFramesAndFactor(){
 
-        currentRobotPosPoint.x = transformAftMapped[3];
+        currentRobotPosPoint.x = transformAftMapped[3]; // pos_cur
         currentRobotPosPoint.y = transformAftMapped[4];
         currentRobotPosPoint.z = transformAftMapped[5];
 
-        bool saveThisKeyFrame = true;
+        bool saveThisKeyFrame = true; // two frame distance >= 0.3 , true
         if (sqrt((previousRobotPosPoint.x-currentRobotPosPoint.x)*(previousRobotPosPoint.x-currentRobotPosPoint.x)
                 +(previousRobotPosPoint.y-currentRobotPosPoint.y)*(previousRobotPosPoint.y-currentRobotPosPoint.y)
                 +(previousRobotPosPoint.z-currentRobotPosPoint.z)*(previousRobotPosPoint.z-currentRobotPosPoint.z)) < 0.3){
@@ -1342,7 +1347,7 @@ public:
         isam->update(gtSAMgraph, initialEstimate);
         isam->update();
         
-        gtSAMgraph.resize(0);
+        gtSAMgraph.resize(0); // pose-graph 
 		initialEstimate.clear();
 
         PointType thisPose3D;
@@ -1445,19 +1450,23 @@ public:
 
                 transformAssociateToMap();
 
+/*  extract pos_cur radius = 50m correspond pose(cloudKeyPoses3D) and point(cornerCloudKeyFrames , surfCloudKeyFrames , outlierCloudKeyFrames)  */
+/*  laserCloudCornerFromMapDS   and  laserCloudSurfFromMapDS */
                 extractSurroundingKeyFrames();
 
                 downsampleCurrentScan();
 
                 scan2MapOptimization();
 
+/*  (1) save keyframe and correspond pose (distance > = 0.3): cornerCloudKeyFrames , surfCloudKeyFrames , outlierCloudKeyFrames cloudKeyPoses3D ----------------*/
+/*  (2) isam2 : pose-graph optimization        */
                 saveKeyFramesAndFactor();
 
                 correctPoses();
 
-                publishTF();
+                publishTF(); // publish map pose
 
-                // publishGlobalMap();
+                publishGlobalMap();
 
                 publishKeyPosesAndFrames();
 
@@ -1477,7 +1486,7 @@ int main(int argc, char** argv)
     mapOptimization MO;
 
     std::thread loopthread(&mapOptimization::loopClosureThread, &MO);
-    std::thread visualizeMapThread(&mapOptimization::visualizeGlobalMapThread, &MO);
+    // std::thread visualizeMapThread(&mapOptimization::visualizeGlobalMapThread, &MO);
 
     ros::Rate rate(200);
     while (ros::ok())
@@ -1490,7 +1499,7 @@ int main(int argc, char** argv)
     }
 
     loopthread.join();
-    visualizeMapThread.join();
+    // visualizeMapThread.join();
 
     return 0;
 }

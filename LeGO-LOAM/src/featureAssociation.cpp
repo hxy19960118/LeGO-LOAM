@@ -690,9 +690,8 @@ public:
                 for (int k = ep; k >= sp; k--) {
                     int ind = cloudSmoothness[k].ind;
                     if (cloudNeighborPicked[ind] == 0 &&
-                        cloudCurvature[ind] > edgeThreshold 
-                        // segInfo.segmentedCloudGroundFlag[ind] == false) {
-                    ){
+                        cloudCurvature[ind] > edgeThreshold &&
+                        segInfo.segmentedCloudGroundFlag[ind] == false) {
                     
                         largestPickedNum++;
                         if (largestPickedNum <= 2) {
@@ -1723,8 +1722,10 @@ public:
         ty = transformSum[4] - y2;
         tz = transformSum[5] - (-sin(ry) * x2 + cos(ry) * z2);
 
+        // std::cout << "front: " << rx << " | " << ry << " | " << rz << std::endl;
         PluginIMURotation(rx, ry, rz, imuPitchStart, imuYawStart, imuRollStart, 
                           imuPitchLast, imuYawLast, imuRollLast, rx, ry, rz);
+        // std::cout << "back: " << rx << " | " << ry << " | " << rz << std::endl;
 
         transformSum[0] = rx;
         transformSum[1] = ry;
@@ -1732,6 +1733,10 @@ public:
         transformSum[3] = tx;
         transformSum[4] = ty;
         transformSum[5] = tz;
+
+        // std::cout << "imustart: " << imuPitchStart << " | " << imuYawStart << " | " << imuRollStart << std::endl;
+        // std::cout << "imulast: " << imuPitchLast << " | " << imuYawLast << " | " << imuRollLast << std::endl;
+        // std::cout << "nowtrue: " << transformSum[0] << " | " << transformSum[1] << " | " << transformSum[2] << std::endl;
     }
 
     void publishOdometry(){

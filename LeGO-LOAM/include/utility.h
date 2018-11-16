@@ -56,7 +56,7 @@ extern const int Horizon_SCAN = 1800;
 extern const float ang_res_x = 0.2;
 extern const float ang_res_y = 2.0;
 extern const float ang_bottom = 15.0+0.1;
-extern const int groundScanInd = 7;
+extern const int groundScanInd = 5;
 
 extern const bool loopClosureEnableFlag = false;
 extern const double mappingProcessInterval = 0.3;

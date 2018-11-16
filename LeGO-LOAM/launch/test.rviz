@@ -8,6 +8,7 @@ Panels:
         - /Map Cloud1/Autocompute Value Bounds1
         - /Path1
         - /Odometry1
+        - /Grid1
       Splitter Ratio: 0.544680834
     Tree Height: 843
   - Class: rviz/Selection
@@ -25,7 +26,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: Edge Features (green)
+    SyncSource: ""
   - Class: rviz/Help
     Name: Help
 Visualization Manager:
@@ -101,8 +102,8 @@ Visualization Manager:
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 35.6278992
-        Min Value: -6.05167532
+        Max Value: 34.5084267
+        Min Value: -6.01275063
         Value: true
       Axis: Y
       Channel Name: intensity
@@ -200,8 +201,8 @@ Visualization Manager:
         Y: 0
         Z: 0
       Plane: XY
-      Plane Cell Count: 10
-      Reference Frame: <Fixed Frame>
+      Plane Cell Count: 100
+      Reference Frame: map
       Value: true
     - Alpha: 1
       Autocompute Intensity Bounds: true
@@ -327,6 +328,14 @@ Visualization Manager:
       Topic: /integrated_to_init
       Unreliable: false
       Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /test_node_lu/vis_map_local_marker
+      Name: Marker
+      Namespaces:
+        {}
+      Queue Size: 100
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 0; 0; 0
@@ -342,7 +351,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 26.6148624
+      Distance: 50.9418564
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
@@ -357,10 +366,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: -0.264797688
+      Pitch: -0.354797482
       Target Frame: base_link
       Value: Orbit (rviz)
-      Yaw: 1.4554112
+      Yaw: 1.540416
     Saved: ~
 Window Geometry:
   Displays:
