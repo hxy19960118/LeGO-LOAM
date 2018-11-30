@@ -1649,6 +1649,7 @@ public:
             transformCur[3] -= imuVeloFromStartX * scanPeriod;
             transformCur[4] -= imuVeloFromStartY * scanPeriod;
             transformCur[5] -= imuVeloFromStartZ * scanPeriod;
+        // std::cout << "cur: " << transformCur[3] << " | " << transformCur[4] << " | " << transformCur[5] << std::endl;
         }
     }
 
@@ -1736,7 +1737,8 @@ public:
 
         // std::cout << "imustart: " << imuPitchStart << " | " << imuYawStart << " | " << imuRollStart << std::endl;
         // std::cout << "imulast: " << imuPitchLast << " | " << imuYawLast << " | " << imuRollLast << std::endl;
-        // std::cout << "nowtrue: " << transformSum[0] << " | " << transformSum[1] << " | " << transformSum[2] << std::endl;
+        // std::cout << "cur: " << transformCur[3] << " | " << transformCur[4] << " | " << transformCur[5] << std::endl;
+        // std::cout << "sum: " << transformSum[3] << " | " << transformSum[4] << " | " << transformSum[5] << std::endl;
     }
 
     void publishOdometry(){

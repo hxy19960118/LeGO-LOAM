@@ -203,11 +203,14 @@ public:
 
 // +y:1350 ; +x : 900 ; -y : 450 ; -x:0(1799)
             if (horizonAngle <= -90)
-                columnIdn = -int(horizonAngle / ang_res_x) - 450; 
+                // columnIdn = -int(horizonAngle / ang_res_x) - 450; 
+                columnIdn = -int(horizonAngle / ang_res_x) - 504; 
             else if (horizonAngle >= 0)
-                columnIdn = -int(horizonAngle / ang_res_x) + 1350;
+                // columnIdn = -int(horizonAngle / ang_res_x) + 1350;
+                columnIdn = -int(horizonAngle / ang_res_x) + 1516;
             else
-                columnIdn = 1350 - int(horizonAngle / ang_res_x);
+                // columnIdn = 1350 - int(horizonAngle / ang_res_x);
+                columnIdn = 1516 - int(horizonAngle / ang_res_x);
 
             range = sqrt(thisPoint.x * thisPoint.x + thisPoint.y * thisPoint.y + thisPoint.z * thisPoint.z);
             rangeMat.at<float>(rowIdn, columnIdn) = range; // range image
@@ -253,7 +256,7 @@ public:
 
         for (size_t i = 0; i < N_SCAN; ++i){
             for (size_t j = 0; j < Horizon_SCAN; ++j){
-                if (groundMat.at<int8_t>(i,j) == 1 || rangeMat.at<float>(i,j) == FLT_MAX){
+                if (groundMat.at<int8_t>(i,j) == 1 || rangeMat.at<float>(i,j) == FLT_MAX || rangeMat.at<float>(i,j) < remove_range_points){
                     labelMat.at<int>(i,j) = -1;
                 }
             }
