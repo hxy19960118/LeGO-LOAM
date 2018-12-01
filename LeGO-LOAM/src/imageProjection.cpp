@@ -78,6 +78,8 @@ private:
     float remove_range_points;
     int groundScanInd;
     float segmentTheta;
+    int N_SCAN;
+    int Horizon_SCAN;
 
 public:
     ImageProjection():
@@ -86,8 +88,8 @@ public:
         nh.param<float>("remove_range",remove_range_points,1.0);
         nh.param<int>("groundscanind",groundScanInd,5);
         nh.param<float>("segtheta",segmentTheta,1.0742);
-        // nh.param<int>("n_scan",N_SCAN,16);
-        // nh.param<int>("h_scan",Horizon_SCAN,2016);
+        nh.param<int>("n_scan",N_SCAN,16);
+        nh.param<int>("h_scan",Horizon_SCAN,2016);
 
         subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/velodyne_points", 1, &ImageProjection::cloudHandler, this);
 
@@ -166,9 +168,6 @@ public:
 
         cloudHeader = laserCloudMsg->header;
         pcl::fromROSMsg(*laserCloudMsg, *laserCloudIn);
-        std::vector<int> indices;
-        pcl::removeNaNFromPointCloud(*laserCloudIn,*laserCloudIn, indices);
-        std::cout << "number: " << laserCloudIn->points.size() /16 <<std::endl;
     }
     
     void cloudHandler(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg){
@@ -215,14 +214,14 @@ public:
 
 // +y:1350 ; +x : 900 ; -y : 450 ; -x:0(1799)
             if (horizonAngle <= -90)
-                // columnIdn = -int(horizonAngle / ang_res_x) - 450; 
-                columnIdn = -int(horizonAngle / ang_res_x) - 504; 
+                columnIdn = -int(horizonAngle / ang_res_x) - 450; 
+                // columnIdn = -int(horizonAngle / ang_res_x) - 504; 
             else if (horizonAngle >= 0)
-                // columnIdn = -int(horizonAngle / ang_res_x) + 1350;
-                columnIdn = -int(horizonAngle / ang_res_x) + 1512;
+                columnIdn = -int(horizonAngle / ang_res_x) + 1350;
+                // columnIdn = -int(horizonAngle / ang_res_x) + 1512;
             else
-                // columnIdn = 1350 - int(horizonAngle / ang_res_x);
-                columnIdn = 1512 - int(horizonAngle / ang_res_x);
+                columnIdn = 1350 - int(horizonAngle / ang_res_x);
+                // columnIdn = 1512 - int(horizonAngle / ang_res_x);
 
             range = sqrt(thisPoint.x * thisPoint.x + thisPoint.y * thisPoint.y + thisPoint.z * thisPoint.z);
             rangeMat.at<float>(rowIdn, columnIdn) = range; // range image

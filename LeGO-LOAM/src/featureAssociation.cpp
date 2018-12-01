@@ -79,13 +79,13 @@ private:
     bool systemInited;
 
     std::vector<smoothness_t> cloudSmoothness;
-    // float cloudCurvature[];
-    // int cloudNeighborPicked[];
-    // int cloudLabel[];
+    float cloudCurvature[40000];
+    int cloudNeighborPicked[40000];
+    int cloudLabel[40000];
 
-    float cloudCurvature[N_SCAN*Horizon_SCAN];
-    int cloudNeighborPicked[N_SCAN*Horizon_SCAN];
-    int cloudLabel[N_SCAN*Horizon_SCAN];
+    // float cloudCurvature[N_SCAN*Horizon_SCAN];
+    // int cloudNeighborPicked[N_SCAN*Horizon_SCAN];
+    // int cloudLabel[N_SCAN*Horizon_SCAN];
 
     int imuPointerFront;
     int imuPointerLast;
@@ -146,23 +146,23 @@ private:
     int laserCloudCornerLastNum;
     int laserCloudSurfLastNum;
 
-    // int pointSelCornerInd[];
-    // float pointSearchCornerInd1[];
-    // float pointSearchCornerInd2[];
+    int pointSelCornerInd[40000];
+    float pointSearchCornerInd1[40000];
+    float pointSearchCornerInd2[40000];
 
-    // int pointSelSurfInd[];
-    // float pointSearchSurfInd1[];
-    // float pointSearchSurfInd2[];
-    // float pointSearchSurfInd3[];
+    int pointSelSurfInd[40000];
+    float pointSearchSurfInd1[40000];
+    float pointSearchSurfInd2[40000];
+    float pointSearchSurfInd3[40000];
 
-    int pointSelCornerInd[N_SCAN*Horizon_SCAN];
-    float pointSearchCornerInd1[N_SCAN*Horizon_SCAN];
-    float pointSearchCornerInd2[N_SCAN*Horizon_SCAN];
+    // int pointSelCornerInd[N_SCAN*Horizon_SCAN];
+    // float pointSearchCornerInd1[N_SCAN*Horizon_SCAN];
+    // float pointSearchCornerInd2[N_SCAN*Horizon_SCAN];
 
-    int pointSelSurfInd[N_SCAN*Horizon_SCAN];
-    float pointSearchSurfInd1[N_SCAN*Horizon_SCAN];
-    float pointSearchSurfInd2[N_SCAN*Horizon_SCAN];
-    float pointSearchSurfInd3[N_SCAN*Horizon_SCAN];
+    // int pointSelSurfInd[N_SCAN*Horizon_SCAN];
+    // float pointSearchSurfInd1[N_SCAN*Horizon_SCAN];
+    // float pointSearchSurfInd2[N_SCAN*Horizon_SCAN];
+    // float pointSearchSurfInd3[N_SCAN*Horizon_SCAN];
 
     float transformCur[6];
     float transformSum[6];
@@ -194,6 +194,8 @@ private:
 
     int frameCount;
     string imuTopic;
+    int N_SCAN;
+    int Horizon_SCAN;
 
 public:
 
@@ -202,6 +204,8 @@ public:
         {
         
         nh.param<string>("imu_topic",imuTopic,"/imu/dat");
+        nh.param<int>("n_scan",N_SCAN,16);
+        nh.param<int>("h_scan",Horizon_SCAN,2016);
 
         subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/segmented_cloud", 1, &FeatureAssociation::laserCloudHandler, this);
         subLaserCloudInfo = nh.subscribe<cloud_msgs::cloud_info>("/segmented_cloud_info", 1, &FeatureAssociation::laserCloudInfoHandler, this);
