@@ -1,7 +1,8 @@
 <launch>
     
     <!--- Sim Time -->
-    <param name="/use_sim_time" value="false" />
+    <param name="/use_sim_time" value="true" />
+    <!-- <param name="/use_sim_time" value="false" /> -->
 
     <!--- Run Rviz-->
     <node pkg="rviz" type="rviz" name="rviz" args="-d $(find lego_loam)/launch/test.rviz" />
@@ -12,11 +13,37 @@
 
     <!--- LeGO-LOAM -->    
     <node pkg="lego_loam" type="imageProjection"    name="imageProjection"    output="screen">
-       <remap from="/velodyne_points" to="/lidar_points" />
-  </node>
 
-    <node pkg="lego_loam" type="featureAssociation" name="featureAssociation" output="screen"/>
-    <node pkg="lego_loam" type="mapOptmization"     name="mapOptmization"     output="screen"/>
-    <node pkg="lego_loam" type="transformFusion"    name="transformFusion"    output="screen"/>
+       <param name="remove_range"  value="3.0" />
+       <param name="groundscanind" type="int" value="5" />
+       <param name="segtheta"  value="1.0472" />
+       <param name="n_scan" type="int" value="16" />
+       <param name="h_scan" type="int" value="2016" />
+
+       <remap from="/velodyne_points" to="/lidar_points" />
+
+    </node>
+
+    <node pkg="lego_loam" type="featureAssociation" name="featureAssociation" output="screen">
+
+       <param name="imu_topic" type="string" value="/imu/dat" />
+       <param name="n_scan" type="int" value="16" />
+       <param name="h_scan" type="int" value="2016" />
+
+    </node>
+
+    <node pkg="lego_loam" type="mapOptmization"     name="mapOptmization"     output="screen">
+
+       <param name="loopflag" type="bool" value="true" />
+       <param name="imu_topic" type="string" value="/imu/dat" />
+       <param name="mapinterval" type="double" value="0.3" />
+       <param name="loop_distance"  value="20" />
+       <param name="map_range"  value="500.0" />
+
+    </node>
+
+    <node pkg="lego_loam" type="transformFusion"    name="transformFusion"    output="screen">
+
+    </node>
 
 </launch>

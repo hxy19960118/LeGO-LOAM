@@ -51,28 +51,27 @@ using namespace std;
 
 typedef pcl::PointXYZI  PointType;
 
-extern const float remove_range_points = 0.0;
 
 extern const int N_SCAN = 16;
-extern const int Horizon_SCAN = 1800;
-// extern const int Horizon_SCAN = 2016;
-extern const float ang_res_x = 0.2;
-// extern const float ang_res_x = 0.178;
+// extern const int Horizon_SCAN = 1800;
+extern const int Horizon_SCAN = 2016;
+// extern const float ang_res_x = 0.2;
+extern const float ang_res_x = 0.178;
 extern const float ang_res_y = 2.0;
 extern const float ang_bottom = 15.0+0.1;
-extern const int groundScanInd = 5;
+// extern const int groundScanInd = 5;
 
-extern const bool loopClosureEnableFlag = false;
-extern const double mappingProcessInterval = 0.3;
+// extern const bool loopClosureEnableFlag = true;
+// extern const double mappingProcessInterval = 0.3;
 
 extern const float scanPeriod = 0.1;
 extern const int systemDelay = 0;
 extern const int imuQueLength = 200;
-extern const string imuTopic = "/imu/data";
+// extern const string imuTopic = "/imu/data";
 
 
 extern const float sensorMountAngle = 0.0;
-extern const float segmentTheta = 1.0472;
+// extern const float segmentTheta = 1.0472;
 // extern const float segmentTheta = 0.3745;
 extern const int segmentValidPointNum = 5;
 extern const int segmentValidLineNum = 3;
@@ -90,11 +89,11 @@ extern const float nearestFeatureSearchSqDist = 25;
 extern const float surroundingKeyframeSearchRadius = 50.0;
 extern const int   surroundingKeyframeSearchNum = 50;
 
-extern const float historyKeyframeSearchRadius = 5.0;
+// extern const float historyKeyframeSearchRadius = 30.0;
 extern const int   historyKeyframeSearchNum = 25;
 extern const float historyKeyframeFitnessScore = 0.3;
 
-extern const float globalMapVisualizationSearchRadius = 500.0;
+// extern const float globalMapVisualizationSearchRadius = 500.0;
 
 
 struct smoothness_t{ 

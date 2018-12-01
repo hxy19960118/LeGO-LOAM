@@ -223,6 +223,12 @@ private:
     float cRoll, sRoll, cPitch, sPitch, cYaw, sYaw, tX, tY, tZ;
     float ctRoll, stRoll, ctPitch, stPitch, ctYaw, stYaw, tInX, tInY, tInZ;
 
+    bool loopClosureEnableFlag;
+    string imuTopic;
+    double mappingInterval;
+    float historyKeyframeSearchRadius;
+    float globalMapVisualizationSearchRadius;
+
 public:
 
     
@@ -230,6 +236,13 @@ public:
     mapOptimization():
         nh("~")
     {
+
+        nh.param<bool>("loopflag",loopClosureEnableFlag,true);
+        nh.param<string>("imu_topic",imuTopic,"/imu/dat");
+        nh.param<double>("mapinterval",mappingInterval,0.3);
+        nh.param<float>("loop_distance",historyKeyframeSearchRadius,5.0);
+        nh.param<float>("map_range",globalMapVisualizationSearchRadius,500.0);
+
     	ISAM2Params parameters;
 		parameters.relinearizeThreshold = 0.01;
 		parameters.relinearizeSkip = 1;
@@ -468,6 +481,8 @@ public:
     {
 		if (imuPointerLast >= 0) {
 		    float imuRollLast = 0, imuPitchLast = 0;
+
+        // time sync
 		    while (imuPointerFront != imuPointerLast) {
 		        if (timeLaserOdometry + scanPeriod < imuTime[imuPointerFront]) {
 		            break;
@@ -488,6 +503,10 @@ public:
 		        imuRollLast = imuRoll[imuPointerFront] * ratioFront + imuRoll[imuPointerBack] * ratioBack;
 		        imuPitchLast = imuPitch[imuPointerFront] * ratioFront + imuPitch[imuPointerBack] * ratioBack;
 		    }
+
+        // time not sync
+            // imuRollLast = imuRoll[imuPointerLast];
+		    // imuPitchLast = imuPitch[imuPointerLast];
 
 		    transformTobeMapped[0] = 0.998 * transformTobeMapped[0] + 0.002 * imuPitchLast;
 		    transformTobeMapped[2] = 0.998 * transformTobeMapped[2] + 0.002 * imuRollLast;
@@ -768,7 +787,7 @@ public:
         if (loopClosureEnableFlag == false)
             return;
 
-        ros::Rate rate(1);
+        ros::Rate rate(2);
         while (ros::ok()){
             rate.sleep();
             performLoopClosure();
@@ -846,7 +865,7 @@ public:
 
             if (detectLoopClosure() == true){
                 potentialLoopFlag = true;
-                // std::cout<< "test" << std::endl;
+                std::cout<< "loopClosure" << std::endl;
                 timeSaveFirstCurrentScanForLoopClosure = timeLaserOdometry;
             }
             if (potentialLoopFlag == false)
@@ -1444,7 +1463,7 @@ public:
 
             std::lock_guard<std::mutex> lock(mtx);
 
-            if (timeLaserOdometry - timeLastProcessing >= mappingProcessInterval) {
+            if (timeLaserOdometry - timeLastProcessing >= mappingInterval) {
 
                 timeLastProcessing = timeLaserOdometry;
 
