@@ -50,13 +50,28 @@ private:
 
     uint16_t *queueIndX;
     uint16_t *queueIndY;
+    float remove_range_points;
+    int groundScanInd;
+    float segmentTheta;
+    string UKFPrior_topic;
+    int N_SCAN;
+    int Horizon_SCAN;
+
+
 public:
 
     ImageProjection():
         nh("~"){
 
+        nh.param<float>("remove_range",remove_range_points,1.0);
+        nh.param<int>("groundscanind",groundScanInd,5);
+        nh.param<float>("segtheta",segmentTheta,1.0742);
+        nh.param<string>("ukfprior",UKFPrior_topic,"/aaaa");
+        nh.param<int>("n_scan",N_SCAN,16);
+        nh.param<int>("h_scan",Horizon_SCAN,2016);
+
         subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/velodyne_points", 1, &ImageProjection::cloudHandler, this);
-        subUKFprior = nh.subscribe<sensor_msgs::PointCloud2>("/", 1, &ImageProjection::cloudHandler, this);
+        subUKFprior = nh.subscribe<sensor_msgs::PointCloud2>(UKFPrior_topic, 1, &ImageProjection::UKFpriorHandler, this);
 
         pubFullCloud = nh.advertise<sensor_msgs::PointCloud2> ("/full_cloud_projected", 1);
         pubFullInfoCloud = nh.advertise<sensor_msgs::PointCloud2> ("/full_cloud_info", 1);

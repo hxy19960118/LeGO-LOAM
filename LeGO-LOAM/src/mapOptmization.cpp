@@ -75,10 +75,13 @@ private:
     ros::Subscriber subOutlierCloudLast;
     ros::Subscriber subLaserOdometry;
     ros::Subscriber subImu;
+    ros::Subscriber _map; // known map
 
     nav_msgs::Odometry odomAftMapped;
     tf::StampedTransform aftMappedTrans;
     tf::TransformBroadcaster tfBroadcaster;
+    tf::StampedTransform cam2mapTrans;
+    tf::TransformBroadcaster tfBroadcaster2;
 
     vector<pcl::PointCloud<PointType>::Ptr> cornerCloudKeyFrames;
     vector<pcl::PointCloud<PointType>::Ptr> surfCloudKeyFrames;
@@ -102,6 +105,7 @@ private:
 
     
 
+    pcl::PointCloud<PointType>::Ptr _known_map;
     pcl::PointCloud<PointType>::Ptr surroundingKeyPoses;
     pcl::PointCloud<PointType>::Ptr surroundingKeyPosesDS;
 
@@ -145,6 +149,7 @@ private:
     pcl::PointCloud<PointType>::Ptr globalMapKeyPosesDS;
     pcl::PointCloud<PointType>::Ptr globalMapKeyFrames;
     pcl::PointCloud<PointType>::Ptr globalMapKeyFramesDS;
+    pcl::PointCloud<PointType>::Ptr globalMapKeyFramesDS2;
 
     std::vector<int> pointSearchInd;
     std::vector<float> pointSearchSqDis;
@@ -169,6 +174,7 @@ private:
     bool newLaserCloudSurfLast;
     bool newLaserOdometry;
     bool newLaserCloudOutlierLast;
+    bool KnownMap; // known map flag
 
 
     float transformLast[6];
@@ -243,6 +249,7 @@ public:
         nh.param<float>("loop_distance",historyKeyframeSearchRadius,5.0);
         nh.param<float>("map_range",globalMapVisualizationSearchRadius,500.0);
 
+        KnownMap = false;
     	ISAM2Params parameters;
 		parameters.relinearizeThreshold = 0.01;
 		parameters.relinearizeSkip = 1;
@@ -257,6 +264,7 @@ public:
         subOutlierCloudLast = nh.subscribe<sensor_msgs::PointCloud2>("/outlier_cloud_last", 2, &mapOptimization::laserCloudOutlierLastHandler, this);
         subLaserOdometry = nh.subscribe<nav_msgs::Odometry>("/laser_odom_to_init", 5, &mapOptimization::laserOdometryHandler, this);
         subImu = nh.subscribe<sensor_msgs::Imu> (imuTopic, 50, &mapOptimization::imuHandler, this);
+        _map = nh.subscribe<sensor_msgs::PointCloud2>("/known_map", 2, &mapOptimization::mapHandler, this);
 
         pubHistoryKeyFrames = nh.advertise<sensor_msgs::PointCloud2>("/history_cloud", 2);
         pubIcpKeyFrames = nh.advertise<sensor_msgs::PointCloud2>("/corrected_cloud", 2);
@@ -278,11 +286,22 @@ public:
         aftMappedTrans.frame_id_ = "/camera_init";
         aftMappedTrans.child_frame_id_ = "/aft_mapped";
 
+        // cam2mapTrans.frame_id_ = "/map";
+        // cam2mapTrans.child_frame_id_ = "/camera_init";
+
         allocateMemory();
+    }
+
+    void mapHandler(const sensor_msgs::PointCloud2ConstPtr& msg){
+
+        pcl::fromROSMsg(*msg,*_known_map );
+        KnownMap = true;
+        std::cout<< "pubsuc" <<std::endl;
     }
 
     void allocateMemory(){
 
+        _known_map.reset(new pcl::PointCloud<PointType>());
         cloudKeyPoses3D.reset(new pcl::PointCloud<PointType>());
         cloudKeyPoses6D.reset(new pcl::PointCloud<PointTypePose>());
 
@@ -327,6 +346,7 @@ public:
         globalMapKeyPosesDS.reset(new pcl::PointCloud<PointType>());
         globalMapKeyFrames.reset(new pcl::PointCloud<PointType>());
         globalMapKeyFramesDS.reset(new pcl::PointCloud<PointType>());
+        globalMapKeyFramesDS2.reset(new pcl::PointCloud<PointType>());
 
         timeLaserCloudCornerLast = 0;
         timeLaserCloudSurfLast = 0;
@@ -699,6 +719,12 @@ public:
         aftMappedTrans.setRotation(tf::Quaternion(-geoQuat.y, -geoQuat.z, geoQuat.x, geoQuat.w));
         aftMappedTrans.setOrigin(tf::Vector3(transformAftMapped[3], transformAftMapped[4], transformAftMapped[5]));
         tfBroadcaster.sendTransform(aftMappedTrans);
+
+        // cam2mapTrans.stamp_ = ros::Time().fromSec(timeLaserOdometry);
+        // cam2mapTrans.setRotation(tf::Quaternion(0.0,0.0,0.0,1.0));
+        // cam2mapTrans.setOrigin(tf::Vector3(0,28,0));
+        // tfBroadcaster2.sendTransform(cam2mapTrans);
+
     }
 
     void publishKeyPosesAndFrames(){
@@ -768,11 +794,13 @@ public:
 
         downSizeFilterGlobalMapKeyFrames.setInputCloud(globalMapKeyFrames);
         downSizeFilterGlobalMapKeyFrames.filter(*globalMapKeyFramesDS);
- 
+        // if (globalMapKeyFramesDS2->empty()){
+            // std::cout<< " 1 " << std::endl;
+        // }
         sensor_msgs::PointCloud2 cloudMsgTemp;
         pcl::toROSMsg(*globalMapKeyFramesDS, cloudMsgTemp);
         // cloudMsgTemp.header.stamp = ros::Time().fromSec(timeLaserOdometry);
-        cloudMsgTemp.header.stamp = _timeLaserOdometry;
+        cloudMsgTemp.header.stamp = ros::Time().fromSec(timeLaserOdometry);
         cloudMsgTemp.header.frame_id = "/camera_init";
         pubLaserCloudSurround.publish(cloudMsgTemp);  
 
@@ -780,6 +808,52 @@ public:
         globalMapKeyPosesDS->clear();
         globalMapKeyFrames->clear();
         globalMapKeyFramesDS->clear();     
+    }
+
+    void mapdetectThread(){
+        if (KnownMap == false)
+            return;
+        // if (globalMapKeyFramesDS2->empty())
+            // return;
+        ros::Rate _rate(0.1);
+        while(ros::ok()){
+        std::cout<< "2 " << std::endl;
+            _rate.sleep();
+            performMapdetect();
+        }
+    }
+
+    void performMapdetect(){
+        ros::Time time1 = ros::Time::now();
+        std::cout<< "icptest" <<std::endl;
+
+        pcl::IterativeClosestPoint<PointType, PointType> icp2;
+        icp2.setMaxCorrespondenceDistance(100);
+        icp2.setMaximumIterations(100);
+        icp2.setTransformationEpsilon(1e-6);
+        icp2.setEuclideanFitnessEpsilon(1e-6);
+        icp2.setRANSACIterations(0);
+
+        mtx.lock();
+        icp2.setInputSource(globalMapKeyFramesDS2);
+        mtx.unlock();
+        icp2.setInputTarget(_known_map);
+        pcl::PointCloud<PointType>::Ptr unused_result(new pcl::PointCloud<PointType>());
+        icp2.align(*unused_result);
+
+        if (icp2.hasConverged() == false || icp2.getFitnessScore() > historyKeyframeFitnessScore)
+            return;
+
+        float x, y, z, roll, pitch, yaw;
+        Eigen::Affine3f correctionCameraFrame;
+        correctionCameraFrame = icp2.getFinalTransformation();
+        pcl::getTranslationAndEulerAngles(correctionCameraFrame, x, y, z, roll, pitch, yaw);
+        std::cout << "x: " << x << " y: " << y << " z: " << z << " roll: " << roll << " pitch: " << pitch << " yaw: " << yaw << std::endl;
+
+        globalMapKeyFramesDS2->clear();
+
+        ros::Time time2 = ros::Time::now();
+        std::cout << "icplasttime: " << (time2 - time1).toSec() << std::endl;
     }
 
     void loopClosureThread(){
@@ -810,7 +884,7 @@ public:
         closestHistoryFrameID = -1;
         for (int i = 0; i < pointSearchIndLoop.size(); ++i){
             int id = pointSearchIndLoop[i];
-            if (abs(cloudKeyPoses6D->points[id].time - timeLaserOdometry) > 30.0){
+            if (abs(cloudKeyPoses6D->points[id].time - timeLaserOdometry) > 70.0){
                 closestHistoryFrameID = id; // in 5m pose and points
                 // std::cout<< "ID: " << closestHistoryFrameID << std::endl;
                 break;
@@ -1505,6 +1579,7 @@ int main(int argc, char** argv)
     mapOptimization MO;
 
     std::thread loopthread(&mapOptimization::loopClosureThread, &MO);
+    // std::thread mapdetectthread(&mapOptimization::mapdetectThread, &MO);
     // std::thread visualizeMapThread(&mapOptimization::visualizeGlobalMapThread, &MO);
 
     ros::Rate rate(200);
@@ -1517,7 +1592,9 @@ int main(int argc, char** argv)
         rate.sleep();
     }
 
+    ros::spin();
     loopthread.join();
+    // mapdetectthread.join();
     // visualizeMapThread.join();
 
     return 0;

@@ -27,8 +27,13 @@
 // POSSIBILITY OF SUCH DAMAGE.
 
 #include "utility.h"
+#include "load_pcd_map/JDMap.h"
+#include "load_pcd_map/JDMetaMap.h"
+double origin_x,origin_y;
 
-
+pcl::PointCloud<PointType>::Ptr cloud_map(new(pcl::PointCloud<PointType>));
+pcl::PointCloud<PointType>::Ptr cloud_mapDS(new(pcl::PointCloud<PointType>));
+sensor_msgs::PointCloud2 ros_points;
 class ImageProjection{
 private:
 
@@ -44,6 +49,7 @@ private:
     ros::Publisher pubSegmentedCloudPure; // seg points pub
     ros::Publisher pubSegmentedCloudInfo;
     ros::Publisher pubOutlierCloud;
+    ros::Publisher known_map_pub;
 
     pcl::PointCloud<PointType>::Ptr laserCloudIn; // raw lidar data
 
@@ -78,6 +84,9 @@ private:
     float remove_range_points;
     int groundScanInd;
     float segmentTheta;
+    int N_SCAN;
+    int Horizon_SCAN;
+    int _count; 
 
 public:
     ImageProjection():
@@ -86,11 +95,12 @@ public:
         nh.param<float>("remove_range",remove_range_points,1.0);
         nh.param<int>("groundscanind",groundScanInd,5);
         nh.param<float>("segtheta",segmentTheta,1.0742);
-        // nh.param<int>("n_scan",N_SCAN,16);
-        // nh.param<int>("h_scan",Horizon_SCAN,2016);
+        nh.param<int>("n_scan",N_SCAN,16);
+        nh.param<int>("h_scan",Horizon_SCAN,2016);
 
         subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/velodyne_points", 1, &ImageProjection::cloudHandler, this);
 
+    known_map_pub = nh.advertise<sensor_msgs::PointCloud2>("/known_map",1);
         pubFullCloud = nh.advertise<sensor_msgs::PointCloud2> ("/full_cloud_projected", 1);
         pubFullInfoCloud = nh.advertise<sensor_msgs::PointCloud2> ("/full_cloud_info", 1);
 
@@ -142,6 +152,7 @@ public:
 
         queueIndX = new uint16_t[N_SCAN*Horizon_SCAN];
         queueIndY = new uint16_t[N_SCAN*Horizon_SCAN];
+        _count =0;
     }
 
     void resetParameters(){
@@ -168,7 +179,7 @@ public:
         pcl::fromROSMsg(*laserCloudMsg, *laserCloudIn);
         std::vector<int> indices;
         pcl::removeNaNFromPointCloud(*laserCloudIn,*laserCloudIn, indices);
-        std::cout << "number: " << laserCloudIn->points.size() /16 <<std::endl;
+        // std::cout << "number: " << laserCloudIn->points.size() /16 <<std::endl;
     }
     
     void cloudHandler(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg){
@@ -430,40 +441,50 @@ public:
 
         pcl::toROSMsg(*outlierCloud, laserCloudTemp);
         laserCloudTemp.header.stamp = cloudHeader.stamp;
-        laserCloudTemp.header.frame_id = "base_link";
+        laserCloudTemp.header.frame_id = "camera";
         pubOutlierCloud.publish(laserCloudTemp);
 
         pcl::toROSMsg(*segmentedCloud, laserCloudTemp);
         laserCloudTemp.header.stamp = cloudHeader.stamp;
-        laserCloudTemp.header.frame_id = "base_link";
+        laserCloudTemp.header.frame_id = "camera";
         pubSegmentedCloud.publish(laserCloudTemp);
 
         if (pubFullCloud.getNumSubscribers() != 0){
             pcl::toROSMsg(*fullCloud, laserCloudTemp);
             laserCloudTemp.header.stamp = cloudHeader.stamp;
-            laserCloudTemp.header.frame_id = "base_link";
+            laserCloudTemp.header.frame_id = "camera";
             pubFullCloud.publish(laserCloudTemp);
         }
 
         if (pubGroundCloud.getNumSubscribers() != 0){
             pcl::toROSMsg(*groundCloud, laserCloudTemp);
             laserCloudTemp.header.stamp = cloudHeader.stamp;
-            laserCloudTemp.header.frame_id = "base_link";
+            laserCloudTemp.header.frame_id = "camera";
             pubGroundCloud.publish(laserCloudTemp);
         }
 
         if (pubSegmentedCloudPure.getNumSubscribers() != 0){
             pcl::toROSMsg(*segmentedCloudPure, laserCloudTemp);
             laserCloudTemp.header.stamp = cloudHeader.stamp;
-            laserCloudTemp.header.frame_id = "base_link";
+            laserCloudTemp.header.frame_id = "camera";
             pubSegmentedCloudPure.publish(laserCloudTemp);
         }
 
         if (pubFullInfoCloud.getNumSubscribers() != 0){
             pcl::toROSMsg(*fullInfoCloud, laserCloudTemp);
             laserCloudTemp.header.stamp = cloudHeader.stamp;
-            laserCloudTemp.header.frame_id = "base_link";
+            laserCloudTemp.header.frame_id = "camera";
             pubFullInfoCloud.publish(laserCloudTemp);
+        }
+
+        if (!cloud_map->empty()){
+            if (_count ==0){
+                _count = 1;
+            pcl::toROSMsg(*cloud_mapDS,ros_points);
+            ros_points.header.stamp = cloudHeader.stamp;
+            ros_points.header.frame_id = "/map";
+            known_map_pub.publish(ros_points);
+            }
         }
     }
 };
@@ -471,10 +492,89 @@ public:
 
 
 
+// void PointCloudPublish(const pcl::PointCloud<PointType>& points) {
+//     pcl::toROSMsg(points,ros_points);
+//     ros_points.header.stamp = ros::Time::now();
+//     ros_points.header.frame_id = "camera_init";
+//     known_map_pub.publish(ros_points);
+//     ROS_INFO("Test pointcloud map publish!");
+// }
+
+void MapListCb(const load_pcd_map::JDMapConstPtr& map_list_) {
+    ROS_INFO("Receive map_list topic...");
+    origin_x = map_list_->originX;
+    origin_y = map_list_->originY;
+
+    ROS_INFO("Get origin(%f,%f)",origin_x,origin_y);
+    for(int i=0;i<map_list_->maps.size();i++)
+    {
+        pcl::PointCloud<PointXYZIL>::Ptr cloud_tile(new(pcl::PointCloud<PointXYZIL>));
+        std::string map_name = map_list_->maps[i].map_name;
+        if (pcl::io::loadPCDFile<PointXYZIL> (map_name.c_str(), *cloud_tile) == -1)
+        {
+            ROS_ERROR("Couldn't read %s file \n",map_name.c_str());
+            continue;
+        }
+        for(int j=0;j<cloud_tile->size();j++)
+        {
+            PointType point;
+            
+            if (cloud_tile->points[j].label == 0) {
+                if (j%5 != 0){
+                    continue;
+                }
+            }
+
+            if (cloud_tile->points[j].label ==1) {
+                if (j%3 != 0){
+                    continue;
+                }
+            }
+
+            point.x = - cloud_tile->points[j].x;
+            point.y = cloud_tile->points[j].z;
+            point.z = cloud_tile->points[j].y;
+            point.intensity = cloud_tile->points[j].intensity;
+            // point.x = point.x + origin_x;
+            // point.y = point.y + origin_y;
+            cloud_map->push_back(point);
+        }
+    }
+    if(cloud_map->empty())
+    {
+        ROS_ERROR("Cannot open any pcd file");
+        return;
+    }
+
+    pcl::VoxelGrid<PointType> downSizeKnownMap;
+    downSizeKnownMap.setLeafSize(0.6,0.6,0.6);
+    downSizeKnownMap.setInputCloud(cloud_map);
+    downSizeKnownMap.filter(*cloud_mapDS);
+
+    std::cout << "known_map size: " << cloud_map->size() << std::endl;
+    // std::cout << cloud_map->points[1023].y << "test: " <<std::endl;
+    // std::cout << cloud_map->points[11023].y << "test1: " <<std::endl;
+    // std::cout << cloud_map->points[21023].y << "test2: " <<std::endl;
+    // std::cout << cloud_map->points[81023].y << "test5: " <<std::endl;
+    // std::cout << cloud_map->points[111023].y << "test3: " <<std::endl;
+    // std::cout << cloud_map->points[1111023].y << "test4: " <<std::endl;
+    // std::cout << cloud_map->points[1411023].y << "test5: " <<std::endl;
+    //cloud_map is the pointcloud map ptr, you can use it with lidar data to do localization
+    // PointCloudPublish(*cloud_mapDS);
+}
+
 int main(int argc, char** argv){
 
     ros::init(argc, argv, "lego_loam");
-    
+
+    ros::NodeHandle n;
+
+    ROS_INFO("load_pcd_map_node start...");
+// known map
+    ros::Subscriber map_list_sub = n.subscribe("/map_list",1,&MapListCb);
+
+
+
     ImageProjection IP;
 
     ROS_INFO("\033[1;32m---->\033[0m Image Projection Started.");

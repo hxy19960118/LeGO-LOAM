@@ -80,8 +80,8 @@ public:
         laserOdometryTrans2.frame_id_ = "/camera_init";
         laserOdometryTrans2.child_frame_id_ = "/camera";
 
-        // map_2_camera_init_Trans.frame_id_ = "/map";
-        // map_2_camera_init_Trans.child_frame_id_ = "/camera_init";
+        map_2_camera_init_Trans.frame_id_ = "/map";
+        map_2_camera_init_Trans.child_frame_id_ = "/camera_init";
 
         // camera_2_base_link_Trans.frame_id_ = "/camera";
         // camera_2_base_link_Trans.child_frame_id_ = "/base_link";
@@ -234,6 +234,11 @@ public:
         laserOdometryTrans2.setRotation(tf::Quaternion(-geoQuat.y, -geoQuat.z, geoQuat.x, geoQuat.w));
         laserOdometryTrans2.setOrigin(tf::Vector3(transformMapped[3], transformMapped[4], transformMapped[5]));
         tfBroadcaster2.sendTransform(laserOdometryTrans2);
+
+        map_2_camera_init_Trans.stamp_ = laserOdometry->header.stamp;
+        map_2_camera_init_Trans.setRotation(tf::Quaternion(0,0,0,1));
+        map_2_camera_init_Trans.setOrigin(tf::Vector3(0,0,0));
+        tfBroadcasterMap2CameraInit.sendTransform(map_2_camera_init_Trans);
     }
 
     void odomAftMappedHandler(const nav_msgs::Odometry::ConstPtr& odomAftMapped)

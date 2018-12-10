@@ -20,6 +20,11 @@ find_package(catkin REQUIRED COMPONENTS
   cloud_msgs
 )
 
+add_message_files(
+    FILES
+    JDMetaMap.msg
+    JDMap.msg)
+
 find_package(GTSAM REQUIRED QUIET)
 find_package(PCL REQUIRED QUIET)
 find_package(OpenCV REQUIRED QUIET)
@@ -58,3 +63,4 @@ target_link_libraries(mapOptmization ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${Open
 
 add_executable(transformFusion src/transformFusion.cpp)
 target_link_libraries(transformFusion ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES})
+

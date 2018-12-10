@@ -52,9 +52,9 @@ using namespace std;
 typedef pcl::PointXYZI  PointType;
 
 
-extern const int N_SCAN = 16;
+// extern const int N_SCAN = 16;
 // extern const int Horizon_SCAN = 1800;
-extern const int Horizon_SCAN = 2016;
+// extern const int Horizon_SCAN = 2016;
 // extern const float ang_res_x = 0.2;
 extern const float ang_res_x = 0.178;
 extern const float ang_res_y = 2.0;
@@ -124,6 +124,28 @@ POINT_CLOUD_REGISTER_POINT_STRUCT (PointXYZIRPYT,
                                    (float, roll, roll) (float, pitch, pitch) (float, yaw, yaw)
                                    (double, time, time)
 )
+//Custom Point format,PointXYZIL
+//I:intensity; L:label,0 :ground points, 1:non-ground points
+struct EIGEN_ALIGN16 PointXYZIL
+{
+    PCL_ADD_POINT4D;
+    union
+    {
+        struct
+        {
+            float intensity;
+            unsigned int label;
+        };
+        float data_c[4];
+    };
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
+};
+POINT_CLOUD_REGISTER_POINT_STRUCT(PointXYZIL,
+                                  (float, x, x)
+                                  (float, y, y)
+                                  (float, z, z)
+                                  (float, intensity, intensity)
+                                  (unsigned int, label, label))
 
 typedef PointXYZIRPYT  PointTypePose;
 

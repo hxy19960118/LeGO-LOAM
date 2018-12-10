@@ -79,13 +79,13 @@ private:
     bool systemInited;
 
     std::vector<smoothness_t> cloudSmoothness;
-    // float cloudCurvature[];
-    // int cloudNeighborPicked[];
-    // int cloudLabel[];
+    float cloudCurvature[40000];
+    int cloudNeighborPicked[40000];
+    int cloudLabel[40000];
 
-    float cloudCurvature[N_SCAN*Horizon_SCAN];
-    int cloudNeighborPicked[N_SCAN*Horizon_SCAN];
-    int cloudLabel[N_SCAN*Horizon_SCAN];
+    // float cloudCurvature[N_SCAN*Horizon_SCAN];
+    // int cloudNeighborPicked[N_SCAN*Horizon_SCAN];
+    // int cloudLabel[N_SCAN*Horizon_SCAN];
 
     int imuPointerFront;
     int imuPointerLast;
@@ -146,23 +146,23 @@ private:
     int laserCloudCornerLastNum;
     int laserCloudSurfLastNum;
 
-    // int pointSelCornerInd[];
-    // float pointSearchCornerInd1[];
-    // float pointSearchCornerInd2[];
+    int pointSelCornerInd[40000];
+    float pointSearchCornerInd1[40000];
+    float pointSearchCornerInd2[40000];
 
-    // int pointSelSurfInd[];
-    // float pointSearchSurfInd1[];
-    // float pointSearchSurfInd2[];
-    // float pointSearchSurfInd3[];
+    int pointSelSurfInd[40000];
+    float pointSearchSurfInd1[40000];
+    float pointSearchSurfInd2[40000];
+    float pointSearchSurfInd3[40000];
 
-    int pointSelCornerInd[N_SCAN*Horizon_SCAN];
-    float pointSearchCornerInd1[N_SCAN*Horizon_SCAN];
-    float pointSearchCornerInd2[N_SCAN*Horizon_SCAN];
+    // int pointSelCornerInd[N_SCAN*Horizon_SCAN];
+    // float pointSearchCornerInd1[N_SCAN*Horizon_SCAN];
+    // float pointSearchCornerInd2[N_SCAN*Horizon_SCAN];
 
-    int pointSelSurfInd[N_SCAN*Horizon_SCAN];
-    float pointSearchSurfInd1[N_SCAN*Horizon_SCAN];
-    float pointSearchSurfInd2[N_SCAN*Horizon_SCAN];
-    float pointSearchSurfInd3[N_SCAN*Horizon_SCAN];
+    // int pointSelSurfInd[N_SCAN*Horizon_SCAN];
+    // float pointSearchSurfInd1[N_SCAN*Horizon_SCAN];
+    // float pointSearchSurfInd2[N_SCAN*Horizon_SCAN];
+    // float pointSearchSurfInd3[N_SCAN*Horizon_SCAN];
 
     float transformCur[6];
     float transformSum[6];
@@ -194,6 +194,12 @@ private:
 
     int frameCount;
     string imuTopic;
+    int N_SCAN;
+    int Horizon_SCAN;
+    float Yaw_Init;
+    float X_Init;
+    float Y_Init;
+    float Z_Init;
 
 public:
 
@@ -202,6 +208,12 @@ public:
         {
         
         nh.param<string>("imu_topic",imuTopic,"/imu/dat");
+        nh.param<int>("n_scan",N_SCAN,16);
+        nh.param<int>("h_scan",Horizon_SCAN,2016);
+        nh.param<float>("yaw_init",Yaw_Init,-148.32);
+        nh.param<float>("x_init",X_Init,0);
+        nh.param<float>("y_init",Y_Init,0);
+        nh.param<float>("z_init",Z_Init,0);
 
         subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/segmented_cloud", 1, &FeatureAssociation::laserCloudHandler, this);
         subLaserCloudInfo = nh.subscribe<cloud_msgs::cloud_info>("/segmented_cloud_info", 1, &FeatureAssociation::laserCloudInfoHandler, this);
@@ -290,6 +302,10 @@ public:
             transformCur[i] = 0;
             transformSum[i] = 0;
         }
+        transformSum[1] = Yaw_Init / 180 * M_PI - M_PI/2;
+        transformSum[3] = X_Init;
+        transformSum[4] = Y_Init;
+        transformSum[5] = Z_Init;
 
         systemInitedLM = false;
 
@@ -1781,7 +1797,7 @@ public:
         // std::cout << "imustart: " << imuPitchStart << " | " << imuYawStart << " | " << imuRollStart << std::endl;
         // std::cout << "imulast: " << imuPitchLast << " | " << imuYawLast << " | " << imuRollLast << std::endl;
         // std::cout << "cur: " << transformCur[3] << " | " << transformCur[4] << " | " << transformCur[5] << std::endl;
-        // std::cout << "sum: " << transformSum[3] << " | " << transformSum[4] << " | " << transformSum[5] << std::endl;
+        // std::cout << "sum: " << transformSum[0] << " | " << transformSum[1] << " | " << transformSum[2] << std::endl;
     }
 
     void publishOdometry(){
