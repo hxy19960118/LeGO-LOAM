@@ -1835,7 +1835,7 @@ public:
         float z2 = sin(rx) * y1 + cos(rx) * z1;
 
         tx = transformSum[3] - (cos(ry) * x2 + sin(ry) * z2);
-        ty = transformSum[4] - y2;
+        ty = transformSum[4] - 0.90*y2;
         tz = transformSum[5] - (-sin(ry) * x2 + cos(ry) * z2);
 
         // std::cout << "front: " << rx << " | " << ry << " | " << rz << std::endl;

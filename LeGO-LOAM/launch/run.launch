@@ -62,7 +62,7 @@
 
     <node pkg="lego_loam" type="mapOptmization"     name="mapOptmization"     output="screen">
 
-       <param name="loopflag" type="bool" value="false" />
+       <param name="loopflag" type="bool" value="true" />
        <param name="mapdetectflag" type="bool" value="false" />
        <param name="imu_topic" type="string" value="/imu/dat" />
        <param name="mapinterval" type="double" value="0.3" />

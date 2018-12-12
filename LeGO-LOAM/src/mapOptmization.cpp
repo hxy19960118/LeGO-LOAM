@@ -1015,7 +1015,7 @@ public:
         if (loopClosureEnableFlag == false)
             return;
 
-        ros::Rate rate(2);
+        ros::Rate rate(3);
         while (ros::ok()){
             rate.sleep();
             performLoopClosure();
@@ -1165,44 +1165,44 @@ public:
         if (cloudKeyPoses3D->points.empty() == true)
             return;	
 		
-	    if (loopClosureEnableFlag== true ){
-            if (recentCornerCloudKeyFrames.size() < surroundingKeyframeSearchNum){
-                recentCornerCloudKeyFrames. clear();
-                recentSurfCloudKeyFrames.   clear();
-                recentOutlierCloudKeyFrames.clear();
-                int numPoses = cloudKeyPoses3D->points.size();
-                for (int i = numPoses-1; i >= 0; --i){
-                    int thisKeyInd = (int)cloudKeyPoses3D->points[i].intensity;
-                    PointTypePose thisTransformation = cloudKeyPoses6D->points[thisKeyInd];
-                    updateTransformPointCloudSinCos(&thisTransformation);
-                    recentCornerCloudKeyFrames. push_front(transformPointCloud(cornerCloudKeyFrames[thisKeyInd]));
-                    recentSurfCloudKeyFrames.   push_front(transformPointCloud(surfCloudKeyFrames[thisKeyInd]));
-                    recentOutlierCloudKeyFrames.push_front(transformPointCloud(outlierCloudKeyFrames[thisKeyInd]));
-                    if (recentCornerCloudKeyFrames.size() >= surroundingKeyframeSearchNum)
-                        break;
-                }
-            }else{
-                if (latestFrameID != cloudKeyPoses3D->points.size() - 1){
+	    // if (loopClosureEnableFlag== true ){
+        //     if (recentCornerCloudKeyFrames.size() < surroundingKeyframeSearchNum){
+        //         recentCornerCloudKeyFrames. clear();
+        //         recentSurfCloudKeyFrames.   clear();
+        //         recentOutlierCloudKeyFrames.clear();
+        //         int numPoses = cloudKeyPoses3D->points.size();
+        //         for (int i = numPoses-1; i >= 0; --i){
+        //             int thisKeyInd = (int)cloudKeyPoses3D->points[i].intensity;
+        //             PointTypePose thisTransformation = cloudKeyPoses6D->points[thisKeyInd];
+        //             updateTransformPointCloudSinCos(&thisTransformation);
+        //             recentCornerCloudKeyFrames. push_front(transformPointCloud(cornerCloudKeyFrames[thisKeyInd]));
+        //             recentSurfCloudKeyFrames.   push_front(transformPointCloud(surfCloudKeyFrames[thisKeyInd]));
+        //             recentOutlierCloudKeyFrames.push_front(transformPointCloud(outlierCloudKeyFrames[thisKeyInd]));
+        //             if (recentCornerCloudKeyFrames.size() >= surroundingKeyframeSearchNum)
+        //                 break;
+        //         }
+        //     }else{
+        //         if (latestFrameID != cloudKeyPoses3D->points.size() - 1){
 
-                    recentCornerCloudKeyFrames. pop_front();
-                    recentSurfCloudKeyFrames.   pop_front();
-                    recentOutlierCloudKeyFrames.pop_front();
-                    latestFrameID = cloudKeyPoses3D->points.size() - 1;
-                    PointTypePose thisTransformation = cloudKeyPoses6D->points[latestFrameID];
-                    updateTransformPointCloudSinCos(&thisTransformation);
-                    recentCornerCloudKeyFrames. push_back(transformPointCloud(cornerCloudKeyFrames[latestFrameID]));
-                    recentSurfCloudKeyFrames.   push_back(transformPointCloud(surfCloudKeyFrames[latestFrameID]));
-                    recentOutlierCloudKeyFrames.push_back(transformPointCloud(outlierCloudKeyFrames[latestFrameID]));
-                }
-            }
+        //             recentCornerCloudKeyFrames. pop_front();
+        //             recentSurfCloudKeyFrames.   pop_front();
+        //             recentOutlierCloudKeyFrames.pop_front();
+        //             latestFrameID = cloudKeyPoses3D->points.size() - 1;
+        //             PointTypePose thisTransformation = cloudKeyPoses6D->points[latestFrameID];
+        //             updateTransformPointCloudSinCos(&thisTransformation);
+        //             recentCornerCloudKeyFrames. push_back(transformPointCloud(cornerCloudKeyFrames[latestFrameID]));
+        //             recentSurfCloudKeyFrames.   push_back(transformPointCloud(surfCloudKeyFrames[latestFrameID]));
+        //             recentOutlierCloudKeyFrames.push_back(transformPointCloud(outlierCloudKeyFrames[latestFrameID]));
+        //         }
+        //     }
 
-            for (int i = 0; i < recentCornerCloudKeyFrames.size(); ++i){
-                *laserCloudCornerFromMap += *recentCornerCloudKeyFrames[i];
-                *laserCloudSurfFromMap   += *recentSurfCloudKeyFrames[i];
-                *laserCloudSurfFromMap   += *recentOutlierCloudKeyFrames[i];
-            }
-		}  
-        else{
+        //     for (int i = 0; i < recentCornerCloudKeyFrames.size(); ++i){
+        //         *laserCloudCornerFromMap += *recentCornerCloudKeyFrames[i];
+        //         *laserCloudSurfFromMap   += *recentSurfCloudKeyFrames[i];
+        //         *laserCloudSurfFromMap   += *recentOutlierCloudKeyFrames[i];
+        //     }
+		// }  
+        // else{
             surroundingKeyPoses->clear();
             surroundingKeyPosesDS->clear();
 
@@ -1257,7 +1257,7 @@ public:
                 *laserCloudSurfFromMap   += *surroundingSurfCloudKeyFrames[i];
                 *laserCloudSurfFromMap   += *surroundingOutlierCloudKeyFrames[i];
             }
-		}
+		// }
 
         downSizeFilterCorner.setInputCloud(laserCloudCornerFromMap);
         downSizeFilterCorner.filter(*laserCloudCornerFromMapDS);
@@ -1650,9 +1650,9 @@ public:
 
     void correctPoses(){
     	if (aLoopIsClosed == true){
-            recentCornerCloudKeyFrames. clear();
-            recentSurfCloudKeyFrames.   clear();
-            recentOutlierCloudKeyFrames.clear();
+            // recentCornerCloudKeyFrames. clear();
+            // recentSurfCloudKeyFrames.   clear();
+            // recentOutlierCloudKeyFrames.clear();
 
             int numPoses = isamCurrentEstimate.size();
 			for (int i = 0; i < numPoses; ++i)
