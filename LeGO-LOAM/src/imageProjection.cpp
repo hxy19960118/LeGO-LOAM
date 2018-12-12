@@ -480,7 +480,7 @@ public:
         if (!cloud_map->empty()){
             if (_count ==0){
                 _count = 1;
-            pcl::toROSMsg(*cloud_mapDS,ros_points);
+            pcl::toROSMsg(*cloud_map,ros_points);
             ros_points.header.stamp = cloudHeader.stamp;
             ros_points.header.frame_id = "/map";
             known_map_pub.publish(ros_points);

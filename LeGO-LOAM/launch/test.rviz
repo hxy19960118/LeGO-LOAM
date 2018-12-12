@@ -28,7 +28,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: Edge Features (green)
+    SyncSource: ""
   - Class: rviz/Help
     Name: Help
 Visualization Manager:

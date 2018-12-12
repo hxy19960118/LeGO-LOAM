@@ -60,6 +60,7 @@ private:
     float transformMapped[6];
     float transformBefMapped[6];
     float transformAftMapped[6];
+    int _count;
 
     std_msgs::Header currentHeader;
 
@@ -67,6 +68,7 @@ public:
 
     TransformFusion(){
 
+        _count = 0;
         pubLaserOdometry2 = nh.advertise<nav_msgs::Odometry> ("/integrated_to_init", 5);
         pubLaserOdometry2path = nh.advertise<nav_msgs::Path> ("/path_to_init", 5);
         subLaserOdometry = nh.subscribe<nav_msgs::Odometry>("/laser_odom_to_init", 5, &TransformFusion::laserOdometryHandler, this);
@@ -213,7 +215,11 @@ public:
         laserOdometry2.pose.pose.position.y = transformMapped[4];
         laserOdometry2.pose.pose.position.z = transformMapped[5];
         pubLaserOdometry2.publish(laserOdometry2);
-
+        
+        if (_count++ % 50 ==0){
+            std::cout << "odometry: " << "x: " << transformMapped[5] << " y: " << transformMapped[3] << " z: " << transformMapped[4] << " roll: " << transformMapped[2] << " pitch: " 
+            << transformMapped[0] << " yaw: " << transformMapped[1] << std::endl; 
+        }
         geometry_msgs::PoseStamped this_pose_stamped;
         this_pose_stamped.header.frame_id = "/camera_init";
         //    this_pose_stamped.header.child_frame_id = "/camera";

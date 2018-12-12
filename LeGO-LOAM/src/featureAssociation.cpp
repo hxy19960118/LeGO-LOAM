@@ -44,6 +44,8 @@ private:
     ros::Subscriber subLaserCloudInfo;
     ros::Subscriber subOutlierCloud;
     ros::Subscriber subImu;
+    ros::Subscriber subVel;
+    ros::Subscriber subPos;
 
     ros::Publisher pubCornerPointsSharp;
     ros::Publisher pubCornerPointsLessSharp;
@@ -218,7 +220,9 @@ public:
         subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/segmented_cloud", 1, &FeatureAssociation::laserCloudHandler, this);
         subLaserCloudInfo = nh.subscribe<cloud_msgs::cloud_info>("/segmented_cloud_info", 1, &FeatureAssociation::laserCloudInfoHandler, this);
         subOutlierCloud = nh.subscribe<sensor_msgs::PointCloud2>("/outlier_cloud", 1, &FeatureAssociation::outlierCloudHandler, this);
-        subImu = nh.subscribe<sensor_msgs::Imu>(imuTopic, 50, &FeatureAssociation::imuHandler, this);
+        subImu = nh.subscribe<geometry_msgs::PoseStamped>(imuTopic, 50, &FeatureAssociation::imuHandler, this);
+        subVel = nh.subscribe<geometry_msgs::Vector3Stamped>("/vio_data_rigid1/vel", 50, &FeatureAssociation::velHandler, this);
+        subPos = nh.subscribe<geometry_msgs::PoseStamped>("/vio_data_rigid1/pos", 50, &FeatureAssociation::posHandler, this);
 
         pubCornerPointsSharp = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_sharp", 1);
         pubCornerPointsLessSharp = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_less_sharp", 1);
@@ -345,9 +349,9 @@ public:
 
     void ShiftToStartIMU(float pointTime)
     {
-        imuShiftFromStartXCur = imuShiftXCur - imuShiftXStart - imuVeloXStart * pointTime;
-        imuShiftFromStartYCur = imuShiftYCur - imuShiftYStart - imuVeloYStart * pointTime;
-        imuShiftFromStartZCur = imuShiftZCur - imuShiftZStart - imuVeloZStart * pointTime;
+        imuShiftFromStartXCur = imuShiftXCur - imuShiftXStart ;//- imuVeloXStart * pointTime;
+        imuShiftFromStartYCur = imuShiftYCur - imuShiftYStart ;//- imuVeloYStart * pointTime;
+        imuShiftFromStartZCur = imuShiftZCur - imuShiftZStart ;//- imuVeloZStart * pointTime;
 
         float x1 = cosImuYawStart * imuShiftFromStartXCur - sinImuYawStart * imuShiftFromStartZCur;
         float y1 = imuShiftFromStartYCur;
@@ -447,34 +451,80 @@ public:
         }
     }
 
-    void imuHandler(const sensor_msgs::Imu::ConstPtr& imuIn)
+    // void imuHandler(const sensor_msgs::Imu::ConstPtr& imuIn)
+    // {
+    //     double roll, pitch, yaw;
+    //     tf::Quaternion orientation;
+    //     tf::quaternionMsgToTF(imuIn->orientation, orientation);
+    //     tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
+
+    //     float accX = imuIn->linear_acceleration.y - sin(roll) * cos(pitch) * 9.81;
+    //     float accY = imuIn->linear_acceleration.z - cos(roll) * cos(pitch) * 9.81;
+    //     float accZ = imuIn->linear_acceleration.x + sin(pitch) * 9.81;
+
+    //     imuPointerLast = (imuPointerLast + 1) % imuQueLength;
+
+    //     imuTime[imuPointerLast] = imuIn->header.stamp.toSec();
+
+    //     imuRoll[imuPointerLast] = roll;
+    //     imuPitch[imuPointerLast] = pitch;
+    //     imuYaw[imuPointerLast] = yaw;
+
+    //     imuAccX[imuPointerLast] = accX;
+    //     imuAccY[imuPointerLast] = accY;
+    //     imuAccZ[imuPointerLast] = accZ;
+
+    //     imuAngularVeloX[imuPointerLast] = imuIn->angular_velocity.x;
+    //     imuAngularVeloY[imuPointerLast] = imuIn->angular_velocity.y;
+    //     imuAngularVeloZ[imuPointerLast] = imuIn->angular_velocity.z;
+
+    //     AccumulateIMUShiftAndRotation();
+    // }
+     void velHandler(const geometry_msgs::Vector3Stamped::ConstPtr& imuIn)
+    {
+
+        if (imuPointerLast == -1)
+            return;
+        imuVeloX[imuPointerLast] = imuIn->vector.x; 
+        imuVeloY[imuPointerLast] = -imuIn->vector.z; 
+        imuVeloZ[imuPointerLast] = imuIn->vector.y; 
+
+    } 
+  
+    void posHandler(const geometry_msgs::PoseStamped::ConstPtr& imuIn)
+    {
+        if (imuPointerLast == -1)
+            return;
+
+        imuShiftX[imuPointerLast] = imuIn->pose.position.x; 
+        imuShiftY[imuPointerLast] = -imuIn->pose.position.z; 
+        imuShiftZ[imuPointerLast] = imuIn->pose.position.y; 
+        // AccumulateIMUShiftAndRotation();
+    }
+    void imuHandler(const geometry_msgs::PoseStamped::ConstPtr& imuIn)
     {
         double roll, pitch, yaw;
         tf::Quaternion orientation;
-        tf::quaternionMsgToTF(imuIn->orientation, orientation);
+        tf::quaternionMsgToTF(imuIn->pose.orientation, orientation);
         tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
 
-        float accX = imuIn->linear_acceleration.y - sin(roll) * cos(pitch) * 9.81;
-        float accY = imuIn->linear_acceleration.z - cos(roll) * cos(pitch) * 9.81;
-        float accZ = imuIn->linear_acceleration.x + sin(pitch) * 9.81;
 
         imuPointerLast = (imuPointerLast + 1) % imuQueLength;
 
         imuTime[imuPointerLast] = imuIn->header.stamp.toSec();
 
-        imuRoll[imuPointerLast] = roll;
-        imuPitch[imuPointerLast] = pitch;
-        imuYaw[imuPointerLast] = yaw;
+        imuRoll[imuPointerLast] = pitch;
+        imuPitch[imuPointerLast] = roll;
+        imuYaw[imuPointerLast] = -yaw;
 
-        imuAccX[imuPointerLast] = accX;
-        imuAccY[imuPointerLast] = accY;
-        imuAccZ[imuPointerLast] = accZ;
+        // imuVeloX[imuPointerLast] = 0; 
+        // imuVeloY[imuPointerLast] = 0; 
+        // imuVeloZ[imuPointerLast] = 0; 
 
-        imuAngularVeloX[imuPointerLast] = imuIn->angular_velocity.x;
-        imuAngularVeloY[imuPointerLast] = imuIn->angular_velocity.y;
-        imuAngularVeloZ[imuPointerLast] = imuIn->angular_velocity.z;
-
-        AccumulateIMUShiftAndRotation();
+        // imuShiftX[imuPointerLast] = 0; 
+        // imuShiftY[imuPointerLast] = 0; 
+        // imuShiftZ[imuPointerLast] = 0; 
+        // AccumulateIMUShiftAndRotation();
     }
 
     void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg){
@@ -545,66 +595,69 @@ public:
                 float pointTime = relTime * scanPeriod;
                 imuPointerFront = imuPointerLastIteration;
 
+                // std::cout<< "testsuccess" << std::endl;
             // time not sync
-                    // imuRollCur = imuRoll[imuPointerLast];
-                    // imuPitchCur = imuPitch[imuPointerLast];
-                    // imuYawCur = imuYaw[imuPointerLast];
+                    imuRollCur = imuRoll[imuPointerLast];
+                    imuPitchCur = imuPitch[imuPointerLast];
+                    imuYawCur = imuYaw[imuPointerLast];
 
-                    // imuVeloXCur = imuVeloX[imuPointerLast];
-                    // imuVeloYCur = imuVeloY[imuPointerLast];
-                    // imuVeloZCur = imuVeloZ[imuPointerLast];
+                    imuVeloXCur = imuVeloX[imuPointerLast];
+                    imuVeloYCur = imuVeloY[imuPointerLast];
+                    imuVeloZCur = imuVeloZ[imuPointerLast];
 
-                    // imuShiftXCur = imuShiftX[imuPointerLast];
-                    // imuShiftYCur = imuShiftY[imuPointerLast];
-                    // imuShiftZCur = imuShiftZ[imuPointerLast]; 
+                    imuShiftXCur = imuShiftX[imuPointerLast];
+                    imuShiftYCur = imuShiftY[imuPointerLast];
+                    imuShiftZCur = imuShiftZ[imuPointerLast]; 
+
             // time sync
-                while (imuPointerFront != imuPointerLast) {
-                    if (timeScanCur + pointTime < imuTime[imuPointerFront]) {
-                        break;
-                    }
-                    imuPointerFront = (imuPointerFront + 1) % imuQueLength;
-                }
+                // while (imuPointerFront != imuPointerLast) {
+                //     if (timeScanCur + pointTime < imuTime[imuPointerFront]) {
+                //         break;
+                //     }
+                //     imuPointerFront = (imuPointerFront + 1) % imuQueLength;
+                // }
 
  
 
-                if (timeScanCur + pointTime > imuTime[imuPointerFront]) {
-                    imuRollCur = imuRoll[imuPointerFront];
-                    imuPitchCur = imuPitch[imuPointerFront];
-                    imuYawCur = imuYaw[imuPointerFront];
+                // if (timeScanCur + pointTime > imuTime[imuPointerFront]) {
+                //     imuRollCur = imuRoll[imuPointerFront];
+                //     imuPitchCur = imuPitch[imuPointerFront];
+                //     imuYawCur = imuYaw[imuPointerFront];
 
-                    imuVeloXCur = imuVeloX[imuPointerFront];
-                    imuVeloYCur = imuVeloY[imuPointerFront];
-                    imuVeloZCur = imuVeloZ[imuPointerFront];
+                //     imuVeloXCur = imuVeloX[imuPointerFront];
+                //     imuVeloYCur = imuVeloY[imuPointerFront];
+                //     imuVeloZCur = imuVeloZ[imuPointerFront];
 
-                    imuShiftXCur = imuShiftX[imuPointerFront];
-                    imuShiftYCur = imuShiftY[imuPointerFront];
-                    imuShiftZCur = imuShiftZ[imuPointerFront];   
-                } 
-                else {
-                    int imuPointerBack = (imuPointerFront + imuQueLength - 1) % imuQueLength;
-                    float ratioFront = (timeScanCur + pointTime - imuTime[imuPointerBack]) 
-                                                     / (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
-                    float ratioBack = (imuTime[imuPointerFront] - timeScanCur - pointTime) 
-                                                    / (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
+                //     imuShiftXCur = imuShiftX[imuPointerFront];
+                //     imuShiftYCur = imuShiftY[imuPointerFront];
+                //     imuShiftZCur = imuShiftZ[imuPointerFront];   
+                // } 
+                // else {
+                //     int imuPointerBack = (imuPointerFront + imuQueLength - 1) % imuQueLength;
+                //     float ratioFront = (timeScanCur + pointTime - imuTime[imuPointerBack]) 
+                //                                      / (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
+                //     float ratioBack = (imuTime[imuPointerFront] - timeScanCur - pointTime) 
+                //                                     / (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
 
-                    imuRollCur = imuRoll[imuPointerFront] * ratioFront + imuRoll[imuPointerBack] * ratioBack;
-                    imuPitchCur = imuPitch[imuPointerFront] * ratioFront + imuPitch[imuPointerBack] * ratioBack;
-                    if (imuYaw[imuPointerFront] - imuYaw[imuPointerBack] > M_PI) {
-                        imuYawCur = imuYaw[imuPointerFront] * ratioFront + (imuYaw[imuPointerBack] + 2 * M_PI) * ratioBack;
-                    } else if (imuYaw[imuPointerFront] - imuYaw[imuPointerBack] < -M_PI) {
-                        imuYawCur = imuYaw[imuPointerFront] * ratioFront + (imuYaw[imuPointerBack] - 2 * M_PI) * ratioBack;
-                    } else {
-                        imuYawCur = imuYaw[imuPointerFront] * ratioFront + imuYaw[imuPointerBack] * ratioBack;
-                    }
+                //     imuRollCur = imuRoll[imuPointerFront] * ratioFront + imuRoll[imuPointerBack] * ratioBack;
+                //     imuPitchCur = imuPitch[imuPointerFront] * ratioFront + imuPitch[imuPointerBack] * ratioBack;
+                //     if (imuYaw[imuPointerFront] - imuYaw[imuPointerBack] > M_PI) {
+                //         imuYawCur = imuYaw[imuPointerFront] * ratioFront + (imuYaw[imuPointerBack] + 2 * M_PI) * ratioBack;
+                //     } else if (imuYaw[imuPointerFront] - imuYaw[imuPointerBack] < -M_PI) {
+                //         imuYawCur = imuYaw[imuPointerFront] * ratioFront + (imuYaw[imuPointerBack] - 2 * M_PI) * ratioBack;
+                //     } else {
+                //         imuYawCur = imuYaw[imuPointerFront] * ratioFront + imuYaw[imuPointerBack] * ratioBack;
+                //     }
 
-                    imuVeloXCur = imuVeloX[imuPointerFront] * ratioFront + imuVeloX[imuPointerBack] * ratioBack;
-                    imuVeloYCur = imuVeloY[imuPointerFront] * ratioFront + imuVeloY[imuPointerBack] * ratioBack;
-                    imuVeloZCur = imuVeloZ[imuPointerFront] * ratioFront + imuVeloZ[imuPointerBack] * ratioBack;
+                //     imuVeloXCur = imuVeloX[imuPointerFront] * ratioFront + imuVeloX[imuPointerBack] * ratioBack;
+                //     imuVeloYCur = imuVeloY[imuPointerFront] * ratioFront + imuVeloY[imuPointerBack] * ratioBack;
+                //     imuVeloZCur = imuVeloZ[imuPointerFront] * ratioFront + imuVeloZ[imuPointerBack] * ratioBack;
 
-                    imuShiftXCur = imuShiftX[imuPointerFront] * ratioFront + imuShiftX[imuPointerBack] * ratioBack;
-                    imuShiftYCur = imuShiftY[imuPointerFront] * ratioFront + imuShiftY[imuPointerBack] * ratioBack;
-                    imuShiftZCur = imuShiftZ[imuPointerFront] * ratioFront + imuShiftZ[imuPointerBack] * ratioBack;
-                } 
+                //     imuShiftXCur = imuShiftX[imuPointerFront] * ratioFront + imuShiftX[imuPointerBack] * ratioBack;
+                //     imuShiftYCur = imuShiftY[imuPointerFront] * ratioFront + imuShiftY[imuPointerBack] * ratioBack;
+                //     imuShiftZCur = imuShiftZ[imuPointerFront] * ratioFront + imuShiftZ[imuPointerBack] * ratioBack;
+                // } 
+                //
 
                 if (i == 0) {
                     imuRollStart = imuRollCur;
@@ -620,25 +673,25 @@ public:
                     imuShiftZStart = imuShiftZCur;
 
                 // time not sync
-                    // imuAngularRotationXCur = imuAngularRotationX[imuPointerLast];
-                    // imuAngularRotationYCur = imuAngularRotationY[imuPointerLast];
-                    // imuAngularRotationZCur = imuAngularRotationZ[imuPointerLast];
+                    imuAngularRotationXCur = imuAngularRotationX[imuPointerLast];
+                    imuAngularRotationYCur = imuAngularRotationY[imuPointerLast];
+                    imuAngularRotationZCur = imuAngularRotationZ[imuPointerLast];
 
                 // time sync
-                    if (timeScanCur + pointTime > imuTime[imuPointerFront]) {
-                        imuAngularRotationXCur = imuAngularRotationX[imuPointerFront];
-                        imuAngularRotationYCur = imuAngularRotationY[imuPointerFront];
-                        imuAngularRotationZCur = imuAngularRotationZ[imuPointerFront];
-                    }else{
-                        int imuPointerBack = (imuPointerFront + imuQueLength - 1) % imuQueLength;
-                        float ratioFront = (timeScanCur + pointTime - imuTime[imuPointerBack]) 
-                                                         / (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
-                        float ratioBack = (imuTime[imuPointerFront] - timeScanCur - pointTime) 
-                                                        / (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
-                        imuAngularRotationXCur = imuAngularRotationX[imuPointerFront] * ratioFront + imuAngularRotationX[imuPointerBack] * ratioBack;
-                        imuAngularRotationYCur = imuAngularRotationY[imuPointerFront] * ratioFront + imuAngularRotationY[imuPointerBack] * ratioBack;
-                        imuAngularRotationZCur = imuAngularRotationZ[imuPointerFront] * ratioFront + imuAngularRotationZ[imuPointerBack] * ratioBack;
-                    }
+                    // if (timeScanCur + pointTime > imuTime[imuPointerFront]) {
+                    //     imuAngularRotationXCur = imuAngularRotationX[imuPointerFront];
+                    //     imuAngularRotationYCur = imuAngularRotationY[imuPointerFront];
+                    //     imuAngularRotationZCur = imuAngularRotationZ[imuPointerFront];
+                    // }else{
+                    //     int imuPointerBack = (imuPointerFront + imuQueLength - 1) % imuQueLength;
+                    //     float ratioFront = (timeScanCur + pointTime - imuTime[imuPointerBack]) 
+                    //                                      / (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
+                    //     float ratioBack = (imuTime[imuPointerFront] - timeScanCur - pointTime) 
+                    //                                     / (imuTime[imuPointerFront] - imuTime[imuPointerBack]);
+                    //     imuAngularRotationXCur = imuAngularRotationX[imuPointerFront] * ratioFront + imuAngularRotationX[imuPointerBack] * ratioBack;
+                    //     imuAngularRotationYCur = imuAngularRotationY[imuPointerFront] * ratioFront + imuAngularRotationY[imuPointerBack] * ratioBack;
+                    //     imuAngularRotationZCur = imuAngularRotationZ[imuPointerFront] * ratioFront + imuAngularRotationZ[imuPointerBack] * ratioBack;
+                    // }
 
                     imuAngularFromStartX = imuAngularRotationXCur - imuAngularRotationXLast;
                     imuAngularFromStartY = imuAngularRotationYCur - imuAngularRotationYLast;
@@ -904,8 +957,8 @@ public:
     void TransformToStart(PointType const * const pi, PointType * const po)
     {
         float s = 10 * (pi->intensity - int(pi->intensity));
-        if (s>1.1 ) {
-            s=1.1;}
+        if (s>1.0 ) {
+            s=1.0;}
         if (s <=0)
             {s=0;}
 
@@ -933,7 +986,10 @@ public:
     void TransformToEnd(PointType const * const pi, PointType * const po)
     {
         float s = 10 * (pi->intensity - int(pi->intensity));
-
+        if (s>1.0 ) {
+            s=1.0;}
+        if (s <=0)
+            {s=0;}
         float rx = s * transformCur[0];
         float ry = s * transformCur[1];
         float rz = s * transformCur[2];
@@ -1704,12 +1760,12 @@ public:
             transformCur[2] = - imuAngularFromStartX;
         }
         
-        if (imuVeloFromStartX != 0 || imuVeloFromStartY != 0 || imuVeloFromStartZ != 0){
-            transformCur[3] -= imuVeloFromStartX * scanPeriod;
-            transformCur[4] -= imuVeloFromStartY * scanPeriod;
-            transformCur[5] -= imuVeloFromStartZ * scanPeriod;
-        // std::cout << "cur: " << transformCur[3] << " | " << transformCur[4] << " | " << transformCur[5] << std::endl;
-        }
+        // if (imuVeloFromStartX != 0 || imuVeloFromStartY != 0 || imuVeloFromStartZ != 0){
+        //     transformCur[3] -= imuVeloFromStartX * scanPeriod;
+        //     transformCur[4] -= imuVeloFromStartY * scanPeriod;
+        //     transformCur[5] -= imuVeloFromStartZ * scanPeriod;
+        // // std::cout << "cur: " << transformCur[3] << " | " << transformCur[4] << " | " << transformCur[5] << std::endl;
+        // }
     }
 
     void updateTransformation(){
