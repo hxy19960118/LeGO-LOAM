@@ -197,6 +197,7 @@ public:
         segMsg.startOrientation = -atan2(laserCloudIn->points[0].y, laserCloudIn->points[0].x);
         segMsg.endOrientation   = -atan2(laserCloudIn->points[laserCloudIn->points.size() - 1].y,
                                                      laserCloudIn->points[laserCloudIn->points.size() - 1].x) + 2 * M_PI;
+        // std::cout << "ori: " << segMsg.startOrientation <<  "end: " << segMsg.endOrientation << std::endl;
         if (segMsg.endOrientation - segMsg.startOrientation > 3 * M_PI) {
             segMsg.endOrientation -= 2 * M_PI;
         } else if (segMsg.endOrientation - segMsg.startOrientation < M_PI)

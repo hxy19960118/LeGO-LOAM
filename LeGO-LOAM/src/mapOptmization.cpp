@@ -684,6 +684,37 @@ public:
         return cloudOut;
     }
 
+    pcl::PointCloud<PointType>::Ptr transformPointCloudmap(pcl::PointCloud<PointType>::Ptr cloudIn, PointTypePose* transformIn){
+
+        pcl::PointCloud<PointType>::Ptr cloudOut(new pcl::PointCloud<PointType>());
+
+        PointType *pointFrom;
+        PointType pointTo;
+
+        int cloudSize = cloudIn->points.size();
+        cloudOut->resize(cloudSize);
+        
+        for (int i = 0; i < cloudSize; ++i){
+
+            pointFrom = &cloudIn->points[i];
+            float x1 = cos(transformIn->yaw) * pointFrom->x - sin(transformIn->yaw) * pointFrom->y;
+            float y1 = sin(transformIn->yaw) * pointFrom->x + cos(transformIn->yaw)* pointFrom->y;
+            float z1 = pointFrom->z;
+
+            float x2 = x1;
+            float y2 = cos(transformIn->roll) * y1 - sin(transformIn->roll) * z1;
+            float z2 = sin(transformIn->roll) * y1 + cos(transformIn->roll)* z1;
+
+            pointTo.x = cos(transformIn->pitch) * x2 + sin(transformIn->pitch) * z2 + transformIn->x;
+            pointTo.y = y2 ;//+ transformIn->y;
+            pointTo.z = -sin(transformIn->pitch) * x2 + cos(transformIn->pitch) * z2 + transformIn->z;
+            pointTo.intensity = pointFrom->intensity;
+
+            cloudOut->points[i] = pointTo;
+        }
+        return cloudOut;
+    }
+
     pcl::PointCloud<PointType>::Ptr transformPointCloud(pcl::PointCloud<PointType>::Ptr cloudIn, PointTypePose* transformIn){
 
         pcl::PointCloud<PointType>::Ptr cloudOut(new pcl::PointCloud<PointType>());
@@ -855,9 +886,9 @@ public:
         for (int i = 0; i < globalMapKeyPosesDS->points.size(); ++i){
 			int thisKeyInd = (int)globalMapKeyPosesDS->points[i].intensity;
 			// int thisKeyInd = (int)globalMapKeyPoses->points[i].intensity;
-			*globalMapKeyFrames += *transformPointCloud(cornerCloudKeyFrames[thisKeyInd],   &cloudKeyPoses6D->points[thisKeyInd]);
-			*globalMapKeyFrames += *transformPointCloud(surfCloudKeyFrames[thisKeyInd],    &cloudKeyPoses6D->points[thisKeyInd]);
-			*globalMapKeyFrames += *transformPointCloud(outlierCloudKeyFrames[thisKeyInd], &cloudKeyPoses6D->points[thisKeyInd]);
+			*globalMapKeyFrames += *transformPointCloudmap(cornerCloudKeyFrames[thisKeyInd],   &cloudKeyPoses6D->points[thisKeyInd]);
+			*globalMapKeyFrames += *transformPointCloudmap(surfCloudKeyFrames[thisKeyInd],    &cloudKeyPoses6D->points[thisKeyInd]);
+			*globalMapKeyFrames += *transformPointCloudmap(outlierCloudKeyFrames[thisKeyInd], &cloudKeyPoses6D->points[thisKeyInd]);
         }
 
         downSizeFilterGlobalMapKeyFrames.setInputCloud(globalMapKeyFrames);

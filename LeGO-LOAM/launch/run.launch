@@ -15,8 +15,8 @@
  <!-- </node> -->
 
 
-  <node pkg="load_pcd_map" name="map_engine_node" type="map_engine_node" output="screen">
-  </node>
+  <!-- <node pkg="load_pcd_map" name="map_engine_node" type="map_engine_node" output="screen"> -->
+  <!-- </node> -->
 
     <!-- <node pkg="lego_loam" type="imageProjection_with_prior"    name="imageProjection_with_prior"    output="screen">
 
@@ -65,7 +65,7 @@
        <param name="loopflag" type="bool" value="true" />
        <param name="mapdetectflag" type="bool" value="false" />
        <param name="imu_topic" type="string" value="/imu/dat" />
-       <param name="mapinterval" type="double" value="0.3" />
+       <param name="mapinterval" type="double" value="0.1" />
        <param name="loop_distance"  value="30" />
        <param name="map_range"  value="500.0" />
        <param name="numberkeyframe" type="int" value="50" />

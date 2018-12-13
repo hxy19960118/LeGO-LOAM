@@ -181,6 +181,7 @@ public:
         transformMapped[3] = transformAftMapped[3] 
                            - (cos(transformMapped[1]) * x2 + sin(transformMapped[1]) * z2);
         transformMapped[4] = transformAftMapped[4] - y2;
+        // transformMapped[4] = 0;
         transformMapped[5] = transformAftMapped[5] 
                            - (-sin(transformMapped[1]) * x2 + cos(transformMapped[1]) * z2);
     }
@@ -212,7 +213,8 @@ public:
         laserOdometry2.pose.pose.orientation.z = geoQuat.x;
         laserOdometry2.pose.pose.orientation.w = geoQuat.w;
         laserOdometry2.pose.pose.position.x = transformMapped[3];
-        laserOdometry2.pose.pose.position.y = transformMapped[4];
+        // laserOdometry2.pose.pose.position.y = transformMapped[4];
+        laserOdometry2.pose.pose.position.y = 0;
         laserOdometry2.pose.pose.position.z = transformMapped[5];
         pubLaserOdometry2.publish(laserOdometry2);
         
@@ -229,7 +231,8 @@ public:
         this_pose_stamped.pose.orientation.z = geoQuat.x;
         this_pose_stamped.pose.orientation.w = geoQuat.w;
         this_pose_stamped.pose.position.x = transformMapped[3];
-        this_pose_stamped.pose.position.y = transformMapped[4];
+        // this_pose_stamped.pose.position.y = transformMapped[4];
+        this_pose_stamped.pose.position.y = 0;
         this_pose_stamped.pose.position.z = transformMapped[5];
 
         _path.poses.push_back(this_pose_stamped);
@@ -238,7 +241,7 @@ public:
 
         laserOdometryTrans2.stamp_ = laserOdometry->header.stamp;
         laserOdometryTrans2.setRotation(tf::Quaternion(-geoQuat.y, -geoQuat.z, geoQuat.x, geoQuat.w));
-        laserOdometryTrans2.setOrigin(tf::Vector3(transformMapped[3], transformMapped[4], transformMapped[5]));
+        laserOdometryTrans2.setOrigin(tf::Vector3(transformMapped[3], 0, transformMapped[5]));
         tfBroadcaster2.sendTransform(laserOdometryTrans2);
 
         map_2_camera_init_Trans.stamp_ = laserOdometry->header.stamp;

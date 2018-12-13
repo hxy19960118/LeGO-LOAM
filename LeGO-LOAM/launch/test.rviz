@@ -11,6 +11,7 @@ Panels:
         - /Grid1
         - /trajectory1
         - /known_map1
+        - /Path2
       Splitter Ratio: 0.544680834
     Tree Height: 843
   - Class: rviz/Selection
@@ -28,7 +29,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: ""
+    SyncSource: Edge Features (green)
   - Class: rviz/Help
     Name: Help
 Visualization Manager:
@@ -53,7 +54,7 @@ Visualization Manager:
       Color: 0; 255; 0
       Color Transformer: FlatColor
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 96
@@ -70,7 +71,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -83,7 +84,7 @@ Visualization Manager:
       Color: 255; 170; 255
       Color Transformer: FlatColor
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 96
@@ -100,12 +101,12 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: true
+      Value: false
     - Alpha: 1
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
-        Max Value: 48.7659149
-        Min Value: -3.19643378
+        Max Value: 68.386528
+        Min Value: -53.0802956
         Value: true
       Axis: Y
       Channel Name: intensity
@@ -113,7 +114,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: AxisColor
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 15
@@ -130,7 +131,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: false
       Use rainbow: false
-      Value: true
+      Value: false
     - Alpha: 1
       Buffer Length: 1
       Class: rviz/Path
@@ -140,7 +141,7 @@ Visualization Manager:
       Head Length: 0.200000003
       Length: 0.300000012
       Line Style: Billboards
-      Line Width: 0.5
+      Line Width: 0.100000001
       Name: Path
       Offset:
         X: 0
@@ -229,7 +230,7 @@ Visualization Manager:
       Queue Size: 10
       Selectable: true
       Size (Pixels): 3
-      Size (m): 0.600000024
+      Size (m): 0.100000001
       Style: Flat Squares
       Topic: /key_pose_origin
       Unreliable: false
@@ -248,7 +249,7 @@ Visualization Manager:
       Color: 255; 255; 255
       Color Transformer: FlatColor
       Decay Time: 0
-      Enabled: true
+      Enabled: false
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 243
@@ -265,6 +266,29 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
+      Value: false
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz/Path
+      Color: 25; 255; 0
+      Enabled: true
+      Head Diameter: 0.300000012
+      Head Length: 0.200000003
+      Length: 0.300000012
+      Line Style: Billboards
+      Line Width: 0.100000001
+      Name: Path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Radius: 0.0299999993
+      Shaft Diameter: 0.100000001
+      Shaft Length: 0.100000001
+      Topic: /gps_path
+      Unreliable: false
       Value: true
   Enabled: true
   Global Options:
@@ -281,7 +305,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 426.090881
+      Distance: 598.730713
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
@@ -296,10 +320,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.0747974738
+      Pitch: -0.20979768
       Target Frame: base_link
       Value: Orbit (rviz)
-      Yaw: 1.51725972
+      Yaw: 1.23226905
     Saved: ~
 Window Geometry:
   Displays:
