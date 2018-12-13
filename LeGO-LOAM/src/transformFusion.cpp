@@ -61,6 +61,7 @@ private:
     float transformBefMapped[6];
     float transformAftMapped[6];
     int _count;
+    double loopflag;
 
     std_msgs::Header currentHeader;
 
@@ -69,6 +70,7 @@ public:
     TransformFusion(){
 
         _count = 0;
+        loopflag = 0;
         pubLaserOdometry2 = nh.advertise<nav_msgs::Odometry> ("/integrated_to_init", 5);
         pubLaserOdometry2path = nh.advertise<nav_msgs::Path> ("/path_to_init", 5);
         subLaserOdometry = nh.subscribe<nav_msgs::Odometry>("/laser_odom_to_init", 5, &TransformFusion::laserOdometryHandler, this);
@@ -215,7 +217,8 @@ public:
         laserOdometry2.pose.pose.position.x = transformMapped[3];
         // laserOdometry2.pose.pose.position.y = transformMapped[4];
         laserOdometry2.pose.pose.position.y = 0;
-        laserOdometry2.pose.pose.position.z = transformMapped[5];
+        laserOdometry2.pose.pose.position.z = transformMapped[5] ;
+        laserOdometry2.pose.covariance[0] = loopflag;
         pubLaserOdometry2.publish(laserOdometry2);
         
         if (_count++ % 50 ==0){
@@ -233,7 +236,7 @@ public:
         this_pose_stamped.pose.position.x = transformMapped[3];
         // this_pose_stamped.pose.position.y = transformMapped[4];
         this_pose_stamped.pose.position.y = 0;
-        this_pose_stamped.pose.position.z = transformMapped[5];
+        this_pose_stamped.pose.position.z = transformMapped[5] ;
 
         _path.poses.push_back(this_pose_stamped);
 
@@ -271,6 +274,8 @@ public:
         transformBefMapped[3] = odomAftMapped->twist.twist.linear.x;
         transformBefMapped[4] = odomAftMapped->twist.twist.linear.y;
         transformBefMapped[5] = odomAftMapped->twist.twist.linear.z;
+
+        loopflag = odomAftMapped->pose.covariance[0];
     }
 };
 

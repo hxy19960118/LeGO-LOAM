@@ -34,7 +34,7 @@
     <!--- LeGO-LOAM -->    
     <node pkg="lego_loam" type="imageProjection"    name="imageProjection"    output="screen">
 
-       <param name="remove_range"  value="4.0" />
+       <param name="remove_range"  value="5.0" />
        <param name="groundscanind" type="int" value="7" />
        <param name="segtheta"  value="1.0472" />
        <param name="n_scan" type="int" value="16" />
@@ -52,7 +52,7 @@
        <param name="yaw_init"  value="90" />
        <param name="x_init"  value="0" />
        <param name="y_init"  value="0" />
-       <param name="z_init"  value="0" />
+       <param name="z_init"  value="3" />
        <!-- <param name="yaw_init"  value="-148.32" /> -->
        <!-- <param name="x_init"  value="170.792" /> -->
        <!-- <param name="y_init"  value="24.361" /> -->
@@ -72,7 +72,7 @@
        <param name="yaw_init"  value="90" />
        <param name="x_init"  value="0" />
        <param name="y_init"  value="0" />
-       <param name="z_init"  value="0" />
+       <param name="z_init"  value="3" />
        <!-- <param name="yaw_init"  value="-148.32" /> -->
        <!-- <param name="x_init"  value="172.792" /> -->
        <!-- <param name="y_init"  value="23.721" /> -->

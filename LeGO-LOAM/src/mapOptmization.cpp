@@ -1127,9 +1127,17 @@ public:
                 std::cout<< "loopClosure" << std::endl;
                 timeSaveFirstCurrentScanForLoopClosure = timeLaserOdometry;
             }
-            if (potentialLoopFlag == false)
+            if (potentialLoopFlag == false) {
+                mtx.lock();
+                odomAftMapped.pose.covariance[0] = 0;
+                mtx.unlock();
                 return;
+            }
         }
+
+        mtx.lock();
+        odomAftMapped.pose.covariance[0] = 1;
+        mtx.unlock();
 
         potentialLoopFlag = false;
 
