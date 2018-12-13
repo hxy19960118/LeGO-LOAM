@@ -221,7 +221,7 @@ public:
         subLaserCloudInfo = nh.subscribe<cloud_msgs::cloud_info>("/segmented_cloud_info", 1, &FeatureAssociation::laserCloudInfoHandler, this);
         subOutlierCloud = nh.subscribe<sensor_msgs::PointCloud2>("/outlier_cloud", 1, &FeatureAssociation::outlierCloudHandler, this);
         subImu = nh.subscribe<geometry_msgs::PoseStamped>(imuTopic, 50, &FeatureAssociation::imuHandler, this);
-        subVel = nh.subscribe<geometry_msgs::Vector3Stamped>("/vio_data_rigid1/vel", 50, &FeatureAssociation::velHandler, this);
+        // subVel = nh.subscribe<geometry_msgs::Vector3Stamped>("/vio_data_rigid1/vel", 50, &FeatureAssociation::velHandler, this);
         subPos = nh.subscribe<geometry_msgs::PoseStamped>("/vio_data_rigid1/pos", 50, &FeatureAssociation::posHandler, this);
 
         pubCornerPointsSharp = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_sharp", 1);
@@ -703,8 +703,8 @@ public:
 
                     updateImuRollPitchYawStartSinCos();
                 } else {
-                    // ShiftToStartIMU(pointTime);
-                    VeloToStartIMU();
+                    ShiftToStartIMU(pointTime);
+                    // VeloToStartIMU();
                     TransformToStartIMU(&point);
                 }
             }
