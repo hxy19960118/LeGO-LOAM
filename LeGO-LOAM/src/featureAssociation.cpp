@@ -921,7 +921,10 @@ public:
     void TransformToEnd(PointType const * const pi, PointType * const po)
     {
         float s = 10 * (pi->intensity - int(pi->intensity));
-
+        if (s>1.1 ) {
+            s=1.1;}
+        if (s <=0)
+            {s=0;}
         float rx = s * transformCur[0];
         float ry = s * transformCur[1];
         float rz = s * transformCur[2];

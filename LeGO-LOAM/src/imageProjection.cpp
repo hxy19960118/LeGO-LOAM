@@ -429,39 +429,39 @@ public:
 
         pcl::toROSMsg(*outlierCloud, laserCloudTemp);
         laserCloudTemp.header.stamp = cloudHeader.stamp;
-        laserCloudTemp.header.frame_id = "base_link";
+        laserCloudTemp.header.frame_id = "camera";
         pubOutlierCloud.publish(laserCloudTemp);
 
         pcl::toROSMsg(*segmentedCloud, laserCloudTemp);
         laserCloudTemp.header.stamp = cloudHeader.stamp;
-        laserCloudTemp.header.frame_id = "base_link";
+        laserCloudTemp.header.frame_id = "camera";
         pubSegmentedCloud.publish(laserCloudTemp);
 
         if (pubFullCloud.getNumSubscribers() != 0){
             pcl::toROSMsg(*fullCloud, laserCloudTemp);
             laserCloudTemp.header.stamp = cloudHeader.stamp;
-            laserCloudTemp.header.frame_id = "base_link";
+            laserCloudTemp.header.frame_id = "camera";
             pubFullCloud.publish(laserCloudTemp);
         }
 
         if (pubGroundCloud.getNumSubscribers() != 0){
             pcl::toROSMsg(*groundCloud, laserCloudTemp);
             laserCloudTemp.header.stamp = cloudHeader.stamp;
-            laserCloudTemp.header.frame_id = "base_link";
+            laserCloudTemp.header.frame_id = "camera";
             pubGroundCloud.publish(laserCloudTemp);
         }
 
         if (pubSegmentedCloudPure.getNumSubscribers() != 0){
             pcl::toROSMsg(*segmentedCloudPure, laserCloudTemp);
             laserCloudTemp.header.stamp = cloudHeader.stamp;
-            laserCloudTemp.header.frame_id = "base_link";
+            laserCloudTemp.header.frame_id = "camera";
             pubSegmentedCloudPure.publish(laserCloudTemp);
         }
 
         if (pubFullInfoCloud.getNumSubscribers() != 0){
             pcl::toROSMsg(*fullInfoCloud, laserCloudTemp);
             laserCloudTemp.header.stamp = cloudHeader.stamp;
-            laserCloudTemp.header.frame_id = "base_link";
+            laserCloudTemp.header.frame_id = "camera";
             pubFullInfoCloud.publish(laserCloudTemp);
         }
     }

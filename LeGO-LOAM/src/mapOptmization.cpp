@@ -1022,6 +1022,7 @@ public:
                     surroundingOutlierCloudKeyFrames.push_back(transformPointCloud(outlierCloudKeyFrames[thisKeyInd]));
                 }
             }
+            // std::cout << "number: "<< numSurroundingPosesDS << " | " << surroundingExistingKeyPosesID.size() <<std::endl;
 
             for (int i = 0; i < surroundingExistingKeyPosesID.size(); ++i) {
                 *laserCloudCornerFromMap += *surroundingCornerCloudKeyFrames[i];
