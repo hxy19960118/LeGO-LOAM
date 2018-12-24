@@ -58,3 +58,10 @@ target_link_libraries(mapOptmization ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${Open
 
 add_executable(transformFusion src/transformFusion.cpp)
 target_link_libraries(transformFusion ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES})
+
+add_executable(lidar_imu_sub src/lidar_imu.cpp)
+target_link_libraries(lidar_imu_sub ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES})
+
+add_executable(VIOAssociation src/vio.cpp)
+add_dependencies(VIOAssociation ${catkin_EXPORTED_TARGETS} cloud_msgs_gencpp)
+target_link_libraries(VIOAssociation ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES})

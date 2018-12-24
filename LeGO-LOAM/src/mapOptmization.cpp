@@ -228,6 +228,7 @@ private:
     double mappingInterval;
     float historyKeyframeSearchRadius;
     float globalMapVisualizationSearchRadius;
+    float surroundingKeyframeSearchNum;
 
 public:
 
@@ -242,6 +243,7 @@ public:
         nh.param<double>("mapinterval",mappingInterval,0.3);
         nh.param<float>("loop_distance",historyKeyframeSearchRadius,5.0);
         nh.param<float>("map_range",globalMapVisualizationSearchRadius,500.0);
+        nh.param<float>("number_keyframe",surroundingKeyframeSearchNum,50.0);
 
     	ISAM2Params parameters;
 		parameters.relinearizeThreshold = 0.01;
@@ -262,15 +264,27 @@ public:
         pubIcpKeyFrames = nh.advertise<sensor_msgs::PointCloud2>("/corrected_cloud", 2);
         pubRecentKeyFrames = nh.advertise<sensor_msgs::PointCloud2>("/recent_cloud", 2);
 
-        downSizeFilterCorner.setLeafSize(0.2, 0.2, 0.2);
-        downSizeFilterSurf.setLeafSize(0.4, 0.4, 0.4);
-        downSizeFilterOutlier.setLeafSize(0.4, 0.4, 0.4);
+// outdoor
+        // downSizeFilterCorner.setLeafSize(0.2, 0.2, 0.2);
+        // downSizeFilterSurf.setLeafSize(0.4, 0.4, 0.4);
+        // downSizeFilterOutlier.setLeafSize(0.4, 0.4, 0.4);
 
-        downSizeFilterHistoryKeyFrames.setLeafSize(0.4, 0.4, 0.4);
-        downSizeFilterSurroundingKeyPoses.setLeafSize(1.0, 1.0, 1.0);
+        // downSizeFilterHistoryKeyFrames.setLeafSize(0.4, 0.4, 0.4);
+        // downSizeFilterSurroundingKeyPoses.setLeafSize(1.0, 1.0, 1.0);
 
-        downSizeFilterGlobalMapKeyPoses.setLeafSize(1.0, 1.0, 1.0);
-        downSizeFilterGlobalMapKeyFrames.setLeafSize(0.4, 0.4, 0.4);
+        // downSizeFilterGlobalMapKeyPoses.setLeafSize(1.0, 1.0, 1.0);
+        // downSizeFilterGlobalMapKeyFrames.setLeafSize(0.4, 0.4, 0.4);
+
+//indoor
+        downSizeFilterCorner.setLeafSize(0.1, 0.1, 0.1);
+        downSizeFilterSurf.setLeafSize(0.2, 0.2, 0.2);
+        downSizeFilterOutlier.setLeafSize(0.2, 0.2, 0.2);
+
+        downSizeFilterHistoryKeyFrames.setLeafSize(0.2, 0.2, 0.2);
+        downSizeFilterSurroundingKeyPoses.setLeafSize(0.2, 0.2, 0.2);
+
+        downSizeFilterGlobalMapKeyPoses.setLeafSize(0.2, 0.2, 0.2);
+        downSizeFilterGlobalMapKeyFrames.setLeafSize(0.2, 0.2, 0.2);
 
         odomAftMapped.header.frame_id = "/camera_init";
         odomAftMapped.child_frame_id = "/aft_mapped";
@@ -596,6 +610,37 @@ public:
         return cloudOut;
     }
 
+    pcl::PointCloud<PointType>::Ptr transformPointCloud1(pcl::PointCloud<PointType>::Ptr cloudIn, PointTypePose* transformIn){
+
+        pcl::PointCloud<PointType>::Ptr cloudOut(new pcl::PointCloud<PointType>());
+
+        PointType *pointFrom;
+        PointType pointTo;
+
+        int cloudSize = cloudIn->points.size();
+        cloudOut->resize(cloudSize);
+        
+        for (int i = 0; i < cloudSize; ++i){
+
+            pointFrom = &cloudIn->points[i];
+            float x1 = cos(transformIn->yaw) * pointFrom->x - sin(transformIn->yaw) * pointFrom->y;
+            float y1 = sin(transformIn->yaw) * pointFrom->x + cos(transformIn->yaw)* pointFrom->y;
+            float z1 = pointFrom->z;
+
+            float x2 = x1;
+            float y2 = cos(transformIn->roll) * y1 - sin(transformIn->roll) * z1;
+            float z2 = sin(transformIn->roll) * y1 + cos(transformIn->roll)* z1;
+
+            pointTo.x = cos(transformIn->pitch) * x2 + sin(transformIn->pitch) * z2 + transformIn->x;
+            pointTo.y = y2 + 0;
+            pointTo.z = -sin(transformIn->pitch) * x2 + cos(transformIn->pitch) * z2 + transformIn->z;
+            pointTo.intensity = pointFrom->intensity;
+
+            cloudOut->points[i] = pointTo;
+        }
+        return cloudOut;
+    }
+
     pcl::PointCloud<PointType>::Ptr transformPointCloud(pcl::PointCloud<PointType>::Ptr cloudIn, PointTypePose* transformIn){
 
         pcl::PointCloud<PointType>::Ptr cloudOut(new pcl::PointCloud<PointType>());
@@ -810,7 +855,7 @@ public:
         closestHistoryFrameID = -1;
         for (int i = 0; i < pointSearchIndLoop.size(); ++i){
             int id = pointSearchIndLoop[i];
-            if (abs(cloudKeyPoses6D->points[id].time - timeLaserOdometry) > 30.0){
+            if (abs(cloudKeyPoses6D->points[id].time - timeLaserOdometry) > 60.0){
                 closestHistoryFrameID = id; // in 5m pose and points
                 // std::cout<< "ID: " << closestHistoryFrameID << std::endl;
                 break;
