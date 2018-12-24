@@ -11,6 +11,7 @@ private:
     ros::Subscriber subOutlierCloud;
     ros::Subscriber subAtt;
     ros::Subscriber subPos;
+    ros::Subscriber subVIO;
 
     ros::Publisher pubLaserCloudCornerLast;
     ros::Publisher pubLaserCloudSurfLast;
@@ -94,6 +95,8 @@ private:
     string posTopic;
     int N_SCAN;
     int Horizon_SCAN;
+    nav_msgs::Path _path;
+    ros::Publisher pubVIO2path;
 
 public:
 
@@ -112,6 +115,10 @@ public:
             // subVel = nh.subscribe<geometry_msgs::Vector3Stamped>("/vio_data_rigid1/vel", 50, &VIOAssociation::velHandler, this);
             subPos = nh.subscribe<geometry_msgs::PoseStamped>(posTopic, 50, &VIOAssociation::posHandler, this);
 
+
+            subVIO= nh.subscribe<nav_msgs::Odometry>("/vins_estimator/odometry", 5, &VIOAssociation::VIOhandle, this);
+
+            pubVIO2path = nh.advertise<nav_msgs::Path> ("/VIO_path", 5);
             pubCornerPointsSharp = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_sharp", 1);
             pubCornerPointsLessSharp = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_less_sharp", 1);
             pubSurfPointsFlat = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_flat", 1);
@@ -193,7 +200,27 @@ public:
         skipFrameNum = 1;
         frameCount = skipFrameNum;
 
+        _path.header.frame_id = "camera_init";
 
+    }
+
+    void VIOhandle(const nav_msgs::Odometry::ConstPtr& VIOdometry){
+
+        geometry_msgs::PoseStamped this_pose_stamped;
+        this_pose_stamped.header.frame_id = "/camera_init";
+        //    this_pose_stamped.header.child_frame_id = "/camera";
+        this_pose_stamped.header.stamp = VIOdometry->header.stamp;
+        this_pose_stamped.pose.orientation.x = VIOdometry->pose.pose.orientation.y;
+        this_pose_stamped.pose.orientation.y = VIOdometry->pose.pose.orientation.z;
+        this_pose_stamped.pose.orientation.z = VIOdometry->pose.pose.orientation.x;
+        this_pose_stamped.pose.orientation.w = VIOdometry->pose.pose.orientation.w;
+        this_pose_stamped.pose.position.x = VIOdometry->pose.pose.position.y;
+        this_pose_stamped.pose.position.y = VIOdometry->pose.pose.position.z;
+        this_pose_stamped.pose.position.z = VIOdometry->pose.pose.position.x;
+
+        _path.poses.push_back(this_pose_stamped);
+
+        pubVIO2path.publish(_path);
     }
 
     void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg){

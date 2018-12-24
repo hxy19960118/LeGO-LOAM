@@ -934,6 +934,7 @@ public:
         if (icp.hasConverged() == false || icp.getFitnessScore() > historyKeyframeFitnessScore)
             return;
 
+                std::cout<< "loopClosure success" << std::endl;
         if (pubIcpKeyFrames.getNumSubscribers() != 0){
             pcl::PointCloud<PointType>::Ptr closed_cloud(new pcl::PointCloud<PointType>());
             pcl::transformPointCloud (*latestSurfKeyFrameCloud, *closed_cloud, icp.getFinalTransformation());
