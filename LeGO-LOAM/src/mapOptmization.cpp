@@ -229,6 +229,7 @@ private:
     float historyKeyframeSearchRadius;
     float globalMapVisualizationSearchRadius;
     float surroundingKeyframeSearchNum;
+    bool VIO_init;
 
 public:
 
@@ -277,14 +278,14 @@ public:
 
 //indoor
         downSizeFilterCorner.setLeafSize(0.1, 0.1, 0.1);
-        downSizeFilterSurf.setLeafSize(0.2, 0.2, 0.2);
+        downSizeFilterSurf.setLeafSize(0.1, 0.1, 0.1);
         downSizeFilterOutlier.setLeafSize(0.2, 0.2, 0.2);
 
-        downSizeFilterHistoryKeyFrames.setLeafSize(0.2, 0.2, 0.2);
-        downSizeFilterSurroundingKeyPoses.setLeafSize(0.2, 0.2, 0.2);
+        downSizeFilterHistoryKeyFrames.setLeafSize(0.1, 0.1, 0.1);
+        downSizeFilterSurroundingKeyPoses.setLeafSize(0.1, 0.1, 0.1);
 
-        downSizeFilterGlobalMapKeyPoses.setLeafSize(0.2, 0.2, 0.2);
-        downSizeFilterGlobalMapKeyFrames.setLeafSize(0.2, 0.2, 0.2);
+        downSizeFilterGlobalMapKeyPoses.setLeafSize(0.1, 0.1, 0.1);
+        downSizeFilterGlobalMapKeyFrames.setLeafSize(0.1, 0.1, 0.1);
 
         odomAftMapped.header.frame_id = "/camera_init";
         odomAftMapped.child_frame_id = "/aft_mapped";
@@ -297,6 +298,7 @@ public:
 
     void allocateMemory(){
 
+        VIO_init = false;
         cloudKeyPoses3D.reset(new pcl::PointCloud<PointType>());
         cloudKeyPoses6D.reset(new pcl::PointCloud<PointTypePose>());
 
@@ -526,6 +528,8 @@ public:
 		    transformTobeMapped[2] = 0.998 * transformTobeMapped[2] + 0.002 * imuRollLast;
 		  }
 
+        // transformTobeMapped[4] = transformSum[4];
+
 		for (int i = 0; i < 6; i++) {
 		    transformBefMapped[i] = transformSum[i];
 		    transformAftMapped[i] = transformTobeMapped[i];
@@ -706,6 +710,7 @@ public:
         transformSum[4] = laserOdometry->pose.pose.position.y;
         transformSum[5] = laserOdometry->pose.pose.position.z;
         newLaserOdometry = true;
+
     }
 
     void imuHandler(const sensor_msgs::Imu::ConstPtr& imuIn){
@@ -855,7 +860,7 @@ public:
         closestHistoryFrameID = -1;
         for (int i = 0; i < pointSearchIndLoop.size(); ++i){
             int id = pointSearchIndLoop[i];
-            if (abs(cloudKeyPoses6D->points[id].time - timeLaserOdometry) > 60.0){
+            if (abs(cloudKeyPoses6D->points[id].time - timeLaserOdometry) > 90.0){
                 closestHistoryFrameID = id; // in 5m pose and points
                 // std::cout<< "ID: " << closestHistoryFrameID << std::endl;
                 break;
@@ -1350,6 +1355,9 @@ public:
 
     void scan2MapOptimization(){
 
+        if (cloudKeyPoses3D->points.empty() == true)
+            return;
+
         if (laserCloudCornerFromMapDSNum > 10 && laserCloudSurfFromMapDSNum > 100) {
 
             kdtreeCornerFromMap->setInputCloud(laserCloudCornerFromMapDS);
@@ -1373,6 +1381,9 @@ public:
 
 
     void saveKeyFramesAndFactor(){
+
+        // transformTobeMapped[4] = transformSum[4];
+        // transformAftMapped[4] = transformSum[4];
 
         currentRobotPosPoint.x = transformAftMapped[3]; // pos_cur
         currentRobotPosPoint.y = transformAftMapped[4];
@@ -1510,12 +1521,24 @@ public:
 
             std::lock_guard<std::mutex> lock(mtx);
 
-            if (timeLaserOdometry - timeLastProcessing >= mappingInterval) {
+            if(VIO_init){
+                transformAssociateToMap();
+            }
+
+            if(!VIO_init){
+                VIO_init = true;
+                for (int i = 0; i < 6; ++i){
+                    transformBefMapped[i] = transformSum[i];
+                    transformAftMapped[i] = transformSum[i];
+                    transformTobeMapped[i] = transformSum[i];
+                }
+            }
+
+            // if (timeLaserOdometry - timeLastProcessing >= mappingInterval) {
 
                 timeLastProcessing = timeLaserOdometry;
 
-                transformAssociateToMap();
-
+                // transformAssociateToMap();
 /*  extract pos_cur radius = 50m correspond pose(cloudKeyPoses3D) and point(cornerCloudKeyFrames , surfCloudKeyFrames , outlierCloudKeyFrames)  */
 /*  laserCloudCornerFromMapDS   and  laserCloudSurfFromMapDS */
                 extractSurroundingKeyFrames();
@@ -1537,7 +1560,7 @@ public:
                 publishKeyPosesAndFrames();
 
                 clearCloud();
-            }
+            // }
         }
     }
 };

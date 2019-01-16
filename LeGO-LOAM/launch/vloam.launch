@@ -24,6 +24,7 @@
        <param name="vio_pos_topic" type="string" value="/vio_data_rigid1/pos" />
        <param name="n_scan" type="int" value="16" />
        <param name="h_scan" type="int" value="1800" />
+       <param name="YAW_INIT"  value="0.0" />
 
     </node>
 
@@ -34,7 +35,7 @@
        <param name="mapinterval" type="double" value="0.3" />
        <param name="loop_distance"  value="8" />
        <param name="map_range"  value="500.0" />
-       <param name="number_keyframe"  value="30.0" />
+       <param name="number_keyframe"  value="50.0" />
 
     </node>
 

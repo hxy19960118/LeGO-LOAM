@@ -95,8 +95,9 @@ private:
     string posTopic;
     int N_SCAN;
     int Horizon_SCAN;
-    nav_msgs::Path _path;
+    nav_msgs::Path _path1;
     ros::Publisher pubVIO2path;
+    float yaw_init;
 
 public:
 
@@ -107,6 +108,7 @@ public:
             nh.param<string>("vio_pos_topic",posTopic,"/dat");
             nh.param<int>("n_scan",N_SCAN,16);
             nh.param<int>("h_scan",Horizon_SCAN,1800);
+            nh.param<float>("YAW_INIT",yaw_init,5.0);
 
             subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/segmented_cloud", 1, &VIOAssociation::laserCloudHandler, this);
             subLaserCloudInfo = nh.subscribe<cloud_msgs::cloud_info>("/segmented_cloud_info", 1, &VIOAssociation::laserCloudInfoHandler, this);
@@ -136,7 +138,7 @@ public:
     void initializationValue(){
         cloudSmoothness.resize(N_SCAN*Horizon_SCAN);
 
-        downSizeFilter.setLeafSize(0.2, 0.2, 0.2);
+        downSizeFilter.setLeafSize(0.1, 0.1, 0.1);
 
         segmentedCloud.reset(new pcl::PointCloud<PointType>());
         outlierCloud.reset(new pcl::PointCloud<PointType>());
@@ -200,7 +202,7 @@ public:
         skipFrameNum = 1;
         frameCount = skipFrameNum;
 
-        _path.header.frame_id = "camera_init";
+        _path1.header.frame_id = "camera_init";
 
     }
 
@@ -218,9 +220,9 @@ public:
         this_pose_stamped.pose.position.y = VIOdometry->pose.pose.position.z;
         this_pose_stamped.pose.position.z = VIOdometry->pose.pose.position.x;
 
-        _path.poses.push_back(this_pose_stamped);
+        _path1.poses.push_back(this_pose_stamped);
 
-        pubVIO2path.publish(_path);
+        pubVIO2path.publish(_path1);
     }
 
     void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg){
@@ -281,7 +283,9 @@ public:
 
         imuRoll[imuPointerLast] = roll;
         imuPitch[imuPointerLast] = pitch;
-        imuYaw[imuPointerLast] = yaw;
+        imuYaw[imuPointerLast] = yaw + yaw_init/180*M_PI;
+        // imuYaw[imuPointerLast] = yaw;
+// std::cout<<"yaw"<< yaw<<std::endl;
         // newatt = true;
 
     }
