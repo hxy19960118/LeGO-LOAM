@@ -18,22 +18,27 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   nav_msgs
   cloud_msgs
+  octomap_msgs
+  octomap_ros
+  visualization_msgs
 )
 
 find_package(GTSAM REQUIRED QUIET)
 find_package(PCL REQUIRED QUIET)
 find_package(OpenCV REQUIRED QUIET)
+find_package(octomap REQUIRED QUIET)
 
 catkin_package(
   INCLUDE_DIRS include
   CATKIN_DEPENDS cloud_msgs
-  DEPENDS PCL
+  DEPENDS PCL octomap
 )
 
 include_directories(
 	include
 	${catkin_INCLUDE_DIRS}
 	${PCL_INCLUDE_DIRS}
+	${OCTOMAP_INCLUDE_DIRS}
 	${OpenCV_INCLUDE_DIRS}
 	${GTSAM_INCLUDE_DIR}
 )
@@ -54,7 +59,7 @@ add_dependencies(featureAssociation ${catkin_EXPORTED_TARGETS} cloud_msgs_gencpp
 target_link_libraries(featureAssociation ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_executable(mapOptmization src/mapOptmization.cpp)
-target_link_libraries(mapOptmization ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES} gtsam)
+target_link_libraries(mapOptmization ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OCTOMAP_LIBRARIES} ${OpenCV_LIBRARIES} gtsam)
 
 add_executable(transformFusion src/transformFusion.cpp)
 target_link_libraries(transformFusion ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES})

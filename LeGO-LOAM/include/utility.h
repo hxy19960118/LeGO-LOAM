@@ -49,6 +49,12 @@
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/exact_time.h>
 #include <message_filters/sync_policies/approximate_time.h>
+#include <octomap/octomap.h>
+#include <octomap/ColorOcTree.h>
+#include <octomap/math/Pose6D.h>
+#include <octomap_msgs/Octomap.h>
+#include <octomap_msgs/conversions.h>
+#include <visualization_msgs/MarkerArray.h>
 
 #define PI 3.14159265
 
@@ -88,7 +94,7 @@ extern const int edgeFeatureNum = 2;
 extern const int surfFeatureNum = 4;
 extern const int sectionsTotal = 6;
 extern const float edgeThreshold = 0.1;
-extern const float surfThreshold = 0.05;
+extern const float surfThreshold = 0.1;
 extern const float nearestFeatureSearchSqDist = 25;
 
 extern const float surroundingKeyframeSearchRadius = 50.0;

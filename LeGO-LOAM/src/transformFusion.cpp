@@ -237,13 +237,13 @@ public:
         this_pose_stamped.header.frame_id = "/camera_init";
         //    this_pose_stamped.header.child_frame_id = "/camera";
         this_pose_stamped.header.stamp = laserOdometry->header.stamp;
-        this_pose_stamped.pose.orientation.x = -geoQuat1.y;
-        this_pose_stamped.pose.orientation.y = -geoQuat1.z;
-        this_pose_stamped.pose.orientation.z = geoQuat1.x;
-        this_pose_stamped.pose.orientation.w = geoQuat1.w;
-        this_pose_stamped.pose.position.x = transformSum[3];
-        this_pose_stamped.pose.position.y = transformSum[4];
-        this_pose_stamped.pose.position.z = transformSum[5];
+        this_pose_stamped.pose.orientation.x = -geoQuat.y;
+        this_pose_stamped.pose.orientation.y = -geoQuat.z;
+        this_pose_stamped.pose.orientation.z = geoQuat.x;
+        this_pose_stamped.pose.orientation.w = geoQuat.w;
+        this_pose_stamped.pose.position.x = transformMapped[3];
+        this_pose_stamped.pose.position.y = transformMapped[4];
+        this_pose_stamped.pose.position.z = transformMapped[5];
 
         _path.poses.push_back(this_pose_stamped);
 

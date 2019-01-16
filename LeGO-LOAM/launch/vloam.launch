@@ -31,10 +31,10 @@
 
        <param name="loopflag" type="bool" value="true" />
        <param name="imu_topic" type="string" value="/imu/daa" />
-       <param name="mapinterval" type="double" value="0.3" />
+       <param name="mapinterval" type="double" value="0.1" />
        <param name="loop_distance"  value="8" />
        <param name="map_range"  value="500.0" />
-       <param name="number_keyframe"  value="30.0" />
+       <param name="number_keyframe"  value="50.0" />
 
     </node>
 
