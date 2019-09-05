@@ -12,6 +12,7 @@ private:
     ros::Subscriber subAtt;
     ros::Subscriber subPos;
     ros::Subscriber subVIO;
+    ros::Subscriber subUKF;
 
     ros::Publisher pubLaserCloudCornerLast;
     ros::Publisher pubLaserCloudSurfLast;
@@ -21,6 +22,9 @@ private:
     ros::Publisher pubCornerPointsLessSharp;
     ros::Publisher pubSurfPointsFlat;
     ros::Publisher pubSurfPointsLessFlat;
+    ros::Publisher pubLaserCloudsegment;
+
+    std::mutex _mtx;
 
     pcl::PointCloud<PointType>::Ptr segmentedCloud; // seg + ground (sparase)
     pcl::PointCloud<PointType>::Ptr outlierCloud;
@@ -95,8 +99,9 @@ private:
     string posTopic;
     int N_SCAN;
     int Horizon_SCAN;
-    nav_msgs::Path _path;
+    nav_msgs::Path _path1;
     ros::Publisher pubVIO2path;
+    float yaw_init;
 
 public:
 
@@ -111,12 +116,13 @@ public:
             subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/segmented_cloud", 1, &VIOAssociation::laserCloudHandler, this);
             subLaserCloudInfo = nh.subscribe<cloud_msgs::cloud_info>("/segmented_cloud_info", 1, &VIOAssociation::laserCloudInfoHandler, this);
             subOutlierCloud = nh.subscribe<sensor_msgs::PointCloud2>("/outlier_cloud", 1, &VIOAssociation::outlierCloudHandler, this);
-            subAtt = nh.subscribe<geometry_msgs::PoseStamped>(attTopic, 50, &VIOAssociation::attHandler, this);
+            // subAtt = nh.subscribe<geometry_msgs::PoseStamped>(attTopic, 50, &VIOAssociation::attHandler, this);
             // subVel = nh.subscribe<geometry_msgs::Vector3Stamped>("/vio_data_rigid1/vel", 50, &VIOAssociation::velHandler, this);
-            subPos = nh.subscribe<geometry_msgs::PoseStamped>(posTopic, 50, &VIOAssociation::posHandler, this);
+            // subPos = nh.subscribe<geometry_msgs::PoseStamped>(posTopic, 50, &VIOAssociation::posHandler, this);
 
 
             subVIO= nh.subscribe<nav_msgs::Odometry>("/vins_estimator/odometry", 5, &VIOAssociation::VIOhandle, this);
+            subUKF= nh.subscribe<nav_msgs::Odometry>("/ukf_predict/odometry", 5, &VIOAssociation::UKFhandle, this);
 
             pubVIO2path = nh.advertise<nav_msgs::Path> ("/VIO_path", 5);
             pubCornerPointsSharp = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_sharp", 1);
@@ -128,6 +134,7 @@ public:
             pubLaserCloudSurfLast = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_surf_last", 2);
             pubOutlierCloudLast = nh.advertise<sensor_msgs::PointCloud2>("/outlier_cloud_last", 2);
             pubLaserOdometry = nh.advertise<nav_msgs::Odometry> ("/laser_odom_to_init", 5);
+            pubLaserCloudsegment = nh.advertise<sensor_msgs::PointCloud2>("/Direct_cloud", 2);
         
             initializationValue();
     
@@ -200,9 +207,10 @@ public:
         skipFrameNum = 1;
         frameCount = skipFrameNum;
 
-        _path.header.frame_id = "camera_init";
+        _path1.header.frame_id = "camera_init";
 
     }
+
 
     void VIOhandle(const nav_msgs::Odometry::ConstPtr& VIOdometry){
 
@@ -218,9 +226,9 @@ public:
         this_pose_stamped.pose.position.y = VIOdometry->pose.pose.position.z;
         this_pose_stamped.pose.position.z = VIOdometry->pose.pose.position.x;
 
-        _path.poses.push_back(this_pose_stamped);
+        _path1.poses.push_back(this_pose_stamped);
 
-        pubVIO2path.publish(_path);
+        pubVIO2path.publish(_path1);
     }
 
     void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg){
@@ -253,37 +261,65 @@ public:
         newSegmentedCloudInfo = true;
     }
 
-    void posHandler(const geometry_msgs::PoseStamped::ConstPtr& imuIn)
-    {
-        if (imuPointerLast == -1)
-            return;
+    // void posHandler(const geometry_msgs::PoseStamped::ConstPtr& imuIn)
+    // {
+    //     if (imuPointerLast == -1)
+    //         return;
 
-        timeNewPos = imuIn->header.stamp.toSec();
-        imuShiftX[imuPointerLast] = imuIn->pose.position.y; 
-        imuShiftY[imuPointerLast] = imuIn->pose.position.z; 
-        imuShiftZ[imuPointerLast] = imuIn->pose.position.x; 
-        // newpos = true;
-        // AccumulateIMUShiftAndRotation();
-    }
+    //     _mtx.lock();
+    //     timeNewPos = imuIn->header.stamp.toSec();
+    //     imuShiftX[imuPointerLast] = -imuIn->pose.position.y; 
+    //     imuShiftY[imuPointerLast] = -imuIn->pose.position.z; 
+    //     imuShiftZ[imuPointerLast] = imuIn->pose.position.x; 
+    //     _mtx.unlock();
+    //     // newpos = true;
+    //     // AccumulateIMUShiftAndRotation();
+    // }
 
-    void attHandler(const geometry_msgs::PoseStamped::ConstPtr& imuIn)
-    {
+//     void attHandler(const geometry_msgs::PoseStamped::ConstPtr& imuIn)
+//     {
+//         double roll, pitch, yaw;
+//         tf::Quaternion orientation;
+//         tf::quaternionMsgToTF(imuIn->pose.orientation, orientation);
+//         tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
+
+
+//         _mtx.lock();
+//         imuPointerLast = (imuPointerLast + 1) % imuQueLength;
+
+//         imuTime[imuPointerLast] = imuIn->header.stamp.toSec();
+//         timeNewAtt = imuTime[imuPointerLast];
+
+//         imuRoll[imuPointerLast] = roll;
+//         imuPitch[imuPointerLast] = -pitch;
+//         imuYaw[imuPointerLast] = -yaw; 
+//         _mtx.unlock();
+//         // imuYaw[imuPointerLast] = yaw;
+// // std::cout<<"yaw"<< yaw<<std::endl;
+//         // newatt = true;
+
+//     }
+
+    void UKFhandle(const nav_msgs::Odometry::ConstPtr& UKFodometry){
         double roll, pitch, yaw;
         tf::Quaternion orientation;
-        tf::quaternionMsgToTF(imuIn->pose.orientation, orientation);
+        tf::quaternionMsgToTF(UKFodometry->pose.pose.orientation, orientation);
         tf::Matrix3x3(orientation).getRPY(roll, pitch, yaw);
-
 
         imuPointerLast = (imuPointerLast + 1) % imuQueLength;
 
-        imuTime[imuPointerLast] = imuIn->header.stamp.toSec();
+        imuTime[imuPointerLast] = UKFodometry->header.stamp.toSec();
         timeNewAtt = imuTime[imuPointerLast];
 
         imuRoll[imuPointerLast] = roll;
         imuPitch[imuPointerLast] = pitch;
         imuYaw[imuPointerLast] = yaw;
-        // newatt = true;
 
+        timeNewPos = UKFodometry->header.stamp.toSec();
+        imuShiftX[imuPointerLast] = UKFodometry->pose.pose.position.y; 
+        imuShiftY[imuPointerLast] = UKFodometry->pose.pose.position.z; 
+        imuShiftZ[imuPointerLast] = UKFodometry->pose.pose.position.x; 
+ 
     }
 
     void TransformToMap(PointType *p){
@@ -769,6 +805,12 @@ public:
             laserCloudSurfLast2.header.stamp = cloudHeader.stamp;
             laserCloudSurfLast2.header.frame_id = "/camera";
             pubLaserCloudSurfLast.publish(laserCloudSurfLast2);
+
+            sensor_msgs::PointCloud2 laserCloudsegmentMsg;
+            pcl::toROSMsg(*segmentedCloud, laserCloudsegmentMsg);
+            laserCloudsegmentMsg.header.stamp = cloudHeader.stamp;
+            laserCloudsegmentMsg.header.frame_id = "/camera_init";
+            pubLaserCloudsegment.publish(laserCloudsegmentMsg);
         }
     }
 
@@ -778,8 +820,8 @@ public:
 
         if (newSegmentedCloud && newSegmentedCloudInfo && newOutlierCloud &&
             std::abs(timeNewSegmentedCloudInfo - timeNewSegmentedCloud) < 0.05 &&
-            std::abs(timeNewOutlierCloud - timeNewSegmentedCloud) < 0.05 &&
-            std::abs(timeNewAtt - timeNewPos) < 0.01 ){
+            std::abs(timeNewOutlierCloud - timeNewSegmentedCloud) < 0.05 
+             ){
 
             newSegmentedCloud = false;
             newSegmentedCloudInfo = false;

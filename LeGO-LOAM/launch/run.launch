@@ -16,17 +16,21 @@
     <!--- LeGO-LOAM -->    
     <node pkg="lego_loam" type="imageProjection"    name="imageProjection"    output="screen">
 
-       <param name="remove_range"  value="0.3" />
-       <param name="groundscanind" type="int" value="4" />
+       <param name="remove_range"  value="0.5" />
+       <param name="groundscanind" type="int" value="7" />
        <param name="segtheta"  value="1.0472" />
        <param name="n_scan" type="int" value="16" />
        <param name="h_scan" type="int" value="1800" />
+       <param name="lidarTopics" type="string" value="/velodyne_ns/velodyne_points" />
+       <!-- <param name="lidarTopics" type="string" value="/velodyne_points" /> -->
+       <!-- <param name="lidarTopics" type="string" value="/vio_test/velodyne" /> -->
+                 
 
     </node>
 
     <node pkg="lego_loam" type="featureAssociation" name="featureAssociation" output="screen">
 
-       <param name="imu_topic" type="string" value="/imu/data" />
+       <param name="imu_topic" type="string" value="/imu_ns/imu/filter" />
        <param name="n_scan" type="int" value="16" />
        <param name="h_scan" type="int" value="1800" />
 
@@ -34,12 +38,13 @@
 
     <node pkg="lego_loam" type="mapOptmization"     name="mapOptmization"     output="screen">
 
-       <param name="loopflag" type="bool" value="true" />
-       <param name="imu_topic" type="string" value="/imu/daa" />
+       <param name="loopflag" type="bool" value="false" />
+       <param name="imu_topic" type="string" value="/imu_n" />
        <param name="mapinterval" type="double" value="0.1" />
-       <param name="loop_distance"  value="8" />
+       <param name="loop_distance"  value="20" />
        <param name="map_range"  value="500.0" />
        <param name="number_keyframe"  value="50.0" />
+       <param name="indoor_flag" type="bool" value="false" />
 
     </node>
 

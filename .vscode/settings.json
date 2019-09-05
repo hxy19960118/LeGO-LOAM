@@ -1,0 +1,25 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/home/daiwei/Workspace/lego_ws/devel/lib/python2.7/dist-packages",
+        "/home/daiwei/Legoloam/devel/lib/python2.7/dist-packages",
+        "/opt/ros/kinetic/lib/python2.7/dist-packages"
+    ],
+    "ros.distro": "kinetic",
+    "files.associations": {
+        "*.ipp": "cpp",
+        "*.tcc": "cpp",
+        "deque": "cpp",
+        "list": "cpp",
+        "string": "cpp",
+        "unordered_map": "cpp",
+        "unordered_set": "cpp",
+        "vector": "cpp",
+        "hash_map": "cpp",
+        "hash_set": "cpp",
+        "system_error": "cpp",
+        "sstream": "cpp",
+        "bitset": "cpp",
+        "random": "cpp",
+        "future": "cpp"
+    }
+}

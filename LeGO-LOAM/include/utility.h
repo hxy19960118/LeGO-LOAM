@@ -8,6 +8,7 @@
 #include <sensor_msgs/PointCloud2.h>
 #include <nav_msgs/Odometry.h>
 #include <nav_msgs/Path.h>
+#include <nav_msgs/OccupancyGrid.h>
 
 #include "cloud_msgs/cloud_info.h"
 
@@ -23,7 +24,15 @@
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/common/common.h>
 #include <pcl/registration/icp.h>
-
+#include <pcl/ModelCoefficients.h>
+#include <pcl/filters/project_inliers.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/filters/passthrough.h>
+#include <pcl/filters/radius_outlier_removal.h>
+#include <pcl/filters/statistical_outlier_removal.h>
+#include <tf/transform_broadcaster.h>
+#include <tf/transform_listener.h>
+#include <pcl_ros/transforms.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
  
@@ -49,6 +58,17 @@
 #include <message_filters/synchronizer.h>
 #include <message_filters/sync_policies/exact_time.h>
 #include <message_filters/sync_policies/approximate_time.h>
+// #include <octomap/octomap.h>
+// #include <octomap/ColorOcTree.h>
+// #include <octomap/math/Pose6D.h>
+// #include <octomap_msgs/Octomap.h>
+// #include <octomap_msgs/conversions.h>
+#include <visualization_msgs/MarkerArray.h>
+
+#include <Eigen/Core>
+#include <Eigen/Geometry>
+#include <Eigen/Eigen> 
+
 
 #define PI 3.14159265
 
@@ -71,7 +91,7 @@ extern const float ang_bottom = 15.0+0.1;
 
 extern const float scanPeriod = 0.1;
 extern const int systemDelay = 0;
-extern const int imuQueLength = 200;
+extern const int imuQueLength = 400;
 // extern const string imuTopic = "/imu/data";
 
 
@@ -91,7 +111,7 @@ extern const float edgeThreshold = 0.1;
 extern const float surfThreshold = 0.05;
 extern const float nearestFeatureSearchSqDist = 25;
 
-extern const float surroundingKeyframeSearchRadius = 50.0;
+extern const float surroundingKeyframeSearchRadius = 100.0;
 // extern const int   surroundingKeyframeSearchNum = 80;
 
 // extern const float historyKeyframeSearchRadius = 30.0;

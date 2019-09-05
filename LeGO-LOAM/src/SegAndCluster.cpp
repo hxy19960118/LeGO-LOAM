@@ -28,8 +28,25 @@
 
 #include "utility.h"
 
+#include <pcl/io/pcd_io.h>
+#include <pcl/features/normal_3d.h>
+#include <boost/thread/thread.hpp>
+#include <pcl/visualization/pcl_visualizer.h>
+#include <pcl/features/integral_image_normal.h>
+#include <pcl/features/normal_3d_omp.h>
+#include <pcl/search/search.h>
+#include <pcl/search/kdtree.h>
+#include <pcl/visualization/cloud_viewer.h>
+#include <pcl/filters/passthrough.h>
+#include <pcl/segmentation/region_growing.h>
+// #include <pcl/ModelCoefficients.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/filters/extract_indices.h>
 
-class ImageProjection{
+
+class SegAndCluster{
 private:
 
     ros::NodeHandle nh;
@@ -38,12 +55,28 @@ private:
     
     ros::Publisher pubFullCloud;
     ros::Publisher pubFullInfoCloud;
+    ros::Publisher pubGroundSAC;
 
     ros::Publisher pubGroundCloud;
     ros::Publisher pubSegmentedCloud; // seg + ground (sparase) pub
     ros::Publisher pubSegmentedCloudPure; // seg points pub
     ros::Publisher pubSegmentedCloudInfo;
     ros::Publisher pubOutlierCloud;
+    ros::Publisher pubClusterCloud;
+
+    
+    pcl::search::KdTree<pcl::PointXYZI>::Ptr tree;
+    pcl::PointCloud<pcl::Normal>::Ptr normals;
+    pcl::NormalEstimationOMP<pcl::PointXYZI,pcl::Normal> normalEstimation;
+    pcl::IndicesPtr indices;
+
+    pcl::RegionGrowing<pcl::PointXYZI, pcl::Normal> reg;
+    std::vector <pcl::PointIndices> clusters;
+    pcl::PointCloud <pcl::PointXYZRGB>::Ptr colored_cloud;
+    // pcl::IntegralImageNormalEstimation<pcl::PointXYZI, pcl::Normal> ne;
+    pcl::VoxelGrid<PointType> downSizeFilterSegPure;
+
+    pcl::SACSegmentation<PointType> seg;
 
     pcl::PointCloud<PointType>::Ptr laserCloudIn; // raw lidar data
 
@@ -51,8 +84,10 @@ private:
     pcl::PointCloud<PointType>::Ptr fullInfoCloud;
 
     pcl::PointCloud<PointType>::Ptr groundCloud;
+    pcl::PointCloud<PointType>::Ptr groundCloudSAC;
     pcl::PointCloud<PointType>::Ptr segmentedCloud; // seg + ground (sparase) points
     pcl::PointCloud<PointType>::Ptr segmentedCloudPure; // seg points
+    pcl::PointCloud<PointType>::Ptr segmentedCloudPureDS; // seg points
     pcl::PointCloud<PointType>::Ptr outlierCloud;
 
     PointType nanPoint;
@@ -68,7 +103,7 @@ private:
     cloud_msgs::cloud_info segMsg;
     std_msgs::Header cloudHeader; // lidar header
 
-    std::vector<std::pair<uint8_t, uint8_t> > neighborIterator;
+    std::vector<std::pair<int8_t, int8_t> > neighborIterator;
 
     uint16_t *allPushedIndX;
     uint16_t *allPushedIndY;
@@ -83,26 +118,30 @@ private:
     std::string lidarTopics;
 
 public:
-    ImageProjection():
+    SegAndCluster():
         nh("~"){
 
-        nh.param<float>("remove_range",remove_range_points,1.0);
-        nh.param<int>("groundscanind",groundScanInd,5);
-        nh.param<float>("segtheta",segmentTheta,1.0742);
+        nh.param<float>("remove_range",remove_range_points,0.5);
+        nh.param<int>("groundscanind",groundScanInd,7);
+        nh.param<float>("segtheta",segmentTheta,0.1745);
         nh.param<int>("n_scan",N_SCAN,16);
-        nh.param<int>("h_scan",Horizon_SCAN,2016);
+        nh.param<int>("h_scan",Horizon_SCAN,1800);
         nh.param<std::string>("lidarTopics",lidarTopics,"/vio_test/velodyne");
+        // nh.param<std::string>("lidarTopics",lidarTopics,"/velodyne_ns/velodyne_points");
+        // nh.param<std::string>("lidarTopics",lidarTopics,"/velodyne_points");
 
-        subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>(lidarTopics, 1, &ImageProjection::cloudHandler, this);
+        subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>(lidarTopics, 1, &SegAndCluster::cloudHandler, this);
 
         pubFullCloud = nh.advertise<sensor_msgs::PointCloud2> ("/full_cloud_projected", 1);
         pubFullInfoCloud = nh.advertise<sensor_msgs::PointCloud2> ("/full_cloud_info", 1);
 
         pubGroundCloud = nh.advertise<sensor_msgs::PointCloud2> ("/ground_cloud", 1);
+        pubGroundSAC = nh.advertise<sensor_msgs::PointCloud2>("/SAC_groundCloud",1);
         pubSegmentedCloud = nh.advertise<sensor_msgs::PointCloud2> ("/segmented_cloud", 1);
         pubSegmentedCloudPure = nh.advertise<sensor_msgs::PointCloud2> ("/segmented_cloud_pure", 1);
         pubSegmentedCloudInfo = nh.advertise<cloud_msgs::cloud_info> ("/segmented_cloud_info", 1);
         pubOutlierCloud = nh.advertise<sensor_msgs::PointCloud2> ("/outlier_cloud", 1);
+        pubClusterCloud = nh.advertise<sensor_msgs::PointCloud2>("/cluster_cloud",1);
 
         nanPoint.x = std::numeric_limits<float>::quiet_NaN();
         nanPoint.y = std::numeric_limits<float>::quiet_NaN();
@@ -121,9 +160,22 @@ public:
         fullInfoCloud.reset(new pcl::PointCloud<PointType>());
 
         groundCloud.reset(new pcl::PointCloud<PointType>());
+        groundCloudSAC.reset(new pcl::PointCloud<PointType>());
         segmentedCloud.reset(new pcl::PointCloud<PointType>());
         segmentedCloudPure.reset(new pcl::PointCloud<PointType>());
+        segmentedCloudPureDS.reset(new pcl::PointCloud<PointType>());
         outlierCloud.reset(new pcl::PointCloud<PointType>());
+
+
+        tree.reset(new pcl::search::KdTree<pcl::PointXYZI>());
+        normals.reset(new pcl::PointCloud<pcl::Normal>());
+        indices.reset(new std::vector <int>);
+        colored_cloud.reset(new pcl::PointCloud <pcl::PointXYZRGB>());
+        downSizeFilterSegPure.setLeafSize(0.1, 0.1, 0.1);
+
+        // coefficientsPtr.reset(new pcl::ModelCoefficients());
+        // inliersPtr.reset(new pcl::PointIndices());
+        
 
         fullCloud->points.resize(N_SCAN*Horizon_SCAN);
         fullInfoCloud->points.resize(N_SCAN*Horizon_SCAN);
@@ -151,9 +203,14 @@ public:
     void resetParameters(){
         laserCloudIn->clear();
         groundCloud->clear();
+        groundCloudSAC->clear();
         segmentedCloud->clear();
         segmentedCloudPure->clear();
+        segmentedCloudPureDS->clear();
         outlierCloud->clear();
+        colored_cloud->clear();
+        normals->clear();
+        clusters.clear();
 
         rangeMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_32F, cv::Scalar::all(FLT_MAX));
         groundMat = cv::Mat(N_SCAN, Horizon_SCAN, CV_8S, cv::Scalar::all(0));
@@ -164,7 +221,7 @@ public:
         std::fill(fullInfoCloud->points.begin(), fullInfoCloud->points.end(), nanPoint);
     }
 
-    ~ImageProjection(){}
+    ~SegAndCluster(){}
 
     void copyPointCloud(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg){
 
@@ -174,13 +231,25 @@ public:
     
     void cloudHandler(const sensor_msgs::PointCloud2ConstPtr& laserCloudMsg){
 
+        ros::Time time1 = ros::Time::now();
+        // std::cout <<"test" <<std::endl;
         copyPointCloud(laserCloudMsg);
         findStartEndAngle();
         projectPointCloud(); // range image : range , row , col 
         groundRemoval();
         cloudSegmentation();
+        ransacPlane();
+        // calculateNormal();
+ 
+        // std::cout << "SegentedCloudPureDS_size: " << segmentedCloudPureDS->points.size()<<std::endl;
+ 
+        // regionGrowingSegmentation();
+
         publishCloud();
         resetParameters();
+
+        ros::Time time2 = ros::Time::now();
+        std::cout<< "time_last: " << (time2 - time1).toSec() << std::endl; 
     }
 
     void findStartEndAngle(){
@@ -274,14 +343,14 @@ public:
                 }
             }
         }
-        if (pubGroundCloud.getNumSubscribers() != 0){
+        // if (pubGroundCloud.getNumSubscribers() != 0){
             for (size_t i = 0; i <= groundScanInd; ++i){
                 for (size_t j = 0; j < Horizon_SCAN; ++j){
                     if (groundMat.at<int8_t>(i,j) == 1)
                         groundCloud->push_back(fullCloud->points[j + i*Horizon_SCAN]);
                 }
             }
-        }
+        // }
     }
 
     void cloudSegmentation(){
@@ -320,7 +389,7 @@ public:
             segMsg.endRingIndex[i] = sizeOfSegCloud-1 - 5;
         }
 
-        if (pubSegmentedCloudPure.getNumSubscribers() != 0){
+        // if (pubSegmentedCloudPure.getNumSubscribers() != 0){
             for (size_t i = 0; i < N_SCAN; ++i){
                 for (size_t j = 0; j < Horizon_SCAN; ++j){
                     if (labelMat.at<int>(i,j) > 0 && labelMat.at<int>(i,j) != 999999){
@@ -329,7 +398,7 @@ public:
                     }
                 }
             }
-        }
+        // }
     }
 
     void labelComponents(int row, int col){
@@ -421,6 +490,107 @@ public:
         }
     }
 
+    void calculateNormal(){
+
+        downSizeFilterSegPure.setInputCloud(segmentedCloudPure);
+        downSizeFilterSegPure.filter(*segmentedCloudPureDS);
+
+        tree->setInputCloud(segmentedCloudPureDS);
+
+        normalEstimation.setInputCloud(segmentedCloudPureDS);
+        normalEstimation.setSearchMethod(tree);
+        normalEstimation.setKSearch(20);
+        normalEstimation.compute(*normals);  
+
+
+    }
+
+    void regionGrowingSegmentation(){
+
+        reg.setMinClusterSize (30);
+        reg.setMaxClusterSize (5000);
+        reg.setSearchMethod (tree);
+        reg.setNumberOfNeighbours (30);
+        reg.setInputCloud (segmentedCloudPureDS);
+        // reg.setIndices (indices);
+        reg.setInputNormals (normals);
+        reg.setSmoothnessThreshold (6.0 / 180.0 * M_PI);
+        reg.setCurvatureThreshold (0.1);
+        reg.extract (clusters);
+
+        std::cout << "Number of clusters is equal to " << clusters.size () << std::endl;
+        for (int i = 0 ; i < clusters.size();++i){
+            std::cout << "number " << i << " of the seg: " << clusters[i].indices.size() << std::endl;
+        }
+        // std::cout << "First cluster has " << clusters[0].indices.size () << " points." << endl;
+        // std::cout << "These are the indices of the points of the initial" <<
+        // std::endl << "cloud that belong to the first cluster:" << std::endl;
+        // int counter = 0;
+        // while (counter < clusters[0].indices.size ())
+        // {
+        //     std::cout << clusters[0].indices[counter] << ", ";
+        //     counter++;
+        //     if (counter % 10 == 0)
+        //         std::cout << std::endl;
+        // }
+        std::cout << std::endl;
+
+        colored_cloud = reg.getColoredCloud();
+
+    }
+
+    bool ransacPlane(){
+        
+        pcl::ModelCoefficients::Ptr coefficientsPtr(new pcl::ModelCoefficients());
+        pcl::PointIndices::Ptr inliersPtr(new pcl::PointIndices());
+        seg.setOptimizeCoefficients(true);
+        seg.setModelType(pcl::SACMODEL_PLANE);
+        seg.setMethodType(pcl::SAC_RANSAC);
+        seg.setDistanceThreshold(0.15);
+        seg.setInputCloud(groundCloud);
+        seg.segment(*inliersPtr, *coefficientsPtr);
+
+        if (inliersPtr->indices.size() == 0){
+            std::cout << "error: no plane points"<< std::endl;
+            return false;
+        }    
+        
+        std::cout << "floor plane coefficients: " << coefficientsPtr->values[0] << " "
+         << coefficientsPtr->values[1] << " "
+         << coefficientsPtr->values[2] << " "
+         << coefficientsPtr->values[3] << std::endl;
+
+        double wa = coefficientsPtr->values[0];
+        double wb = coefficientsPtr->values[1];
+        double wc = coefficientsPtr->values[2];
+        double wd = coefficientsPtr->values[3];
+        double normal_Norm = sqrt(wa*wa + wb*wb + wc*wc);
+        // std::cout << "normal_Norm: "<< normal_Norm <<std::endl;
+        printf("normal_Norm: %f", normal_Norm);
+
+        std::cout << std::endl;
+
+        pcl::ExtractIndices<PointType> extract;
+        extract.setIndices(boost::make_shared<const pcl::PointIndices>(*inliersPtr));
+        extract.setInputCloud(groundCloud);
+
+        std::cout << "groundCloud: "<<groundCloud->points.size()<<std::endl;
+        std::cout << std::endl;
+
+        extract.filter(*groundCloudSAC);
+        std::cout << "groundCloudSAC: "<<groundCloudSAC->points.size()<<std::endl;
+        std::cout << std::endl;
+
+        sensor_msgs::PointCloud2 cloudMsg;
+        pcl::toROSMsg(*groundCloudSAC, cloudMsg);
+        cloudMsg.header.stamp = cloudHeader.stamp;
+        cloudMsg.header.frame_id = cloudHeader.frame_id;
+        pubGroundSAC.publish(cloudMsg);
+        
+        return true;
+
+    }
+
     
     void publishCloud(){
 
@@ -473,6 +643,13 @@ public:
             // laserCloudTemp.header.frame_id = "camera";
             pubFullInfoCloud.publish(laserCloudTemp);
         }
+
+        if (pubClusterCloud.getNumSubscribers() !=0){
+            pcl::toROSMsg(*colored_cloud, laserCloudTemp);
+            laserCloudTemp.header.stamp = cloudHeader.stamp;
+            laserCloudTemp.header.frame_id = cloudHeader.frame_id;
+            pubClusterCloud.publish(laserCloudTemp); 
+        }
     }
 };
 
@@ -483,9 +660,9 @@ int main(int argc, char** argv){
 
     ros::init(argc, argv, "lego_loam");
     
-    ImageProjection IP;
+    SegAndCluster IP;
 
-    ROS_INFO("\033[1;32m---->\033[0m Image Projection Started.");
+    ROS_INFO("\033[1;32m---->\033[0m Segmentation and Cluster Started.");
 
     ros::spin();
     return 0;

@@ -63,6 +63,8 @@ private:
 
     std_msgs::Header currentHeader;
     int _count;
+    bool _init;
+    bool lidar_flag;
 
 public:
 
@@ -73,7 +75,7 @@ public:
         subLaserOdometry = nh.subscribe<nav_msgs::Odometry>("/laser_odom_to_init", 5, &TransformFusion::laserOdometryHandler, this);
         subOdomAftMapped = nh.subscribe<nav_msgs::Odometry>("/aft_mapped_to_init", 5, &TransformFusion::odomAftMappedHandler, this);
 
-        _count = 0;
+        _count = -1;
 
         laserOdometry2.header.frame_id = "/camera_init";
         laserOdometry2.child_frame_id = "/camera";
@@ -90,6 +92,9 @@ public:
 
         // camera_2_base_link_Trans.frame_id_ = "/camera";
         // camera_2_base_link_Trans.child_frame_id_ = "/base_link";
+
+        _init = false;
+        lidar_flag = false;
 
         for (int i = 0; i < 6; ++i)
         {
@@ -204,25 +209,38 @@ public:
         transformSum[4] = laserOdometry->pose.pose.position.y;
         transformSum[5] = laserOdometry->pose.pose.position.z;
 
-        transformAssociateToMap();
+        // if(!_init || !lidar_flag){
+        //     _init = true;
+        //     for (int i = 0; i < 6; ++i){
+        //         transformBefMapped[i] = transformSum[i];
+        //         transformAftMapped[i] = transformSum[i];
+        //         transformMapped[i] = transformSum[i];
+        //     }
 
+        //         std::cout<<"test" << std::endl;
+        // }
+
+        // if(lidar_flag) {
+            transformAssociateToMap();
+        // }
         geoQuat = tf::createQuaternionMsgFromRollPitchYaw
                   (transformMapped[2], -transformMapped[0], -transformMapped[1]);
 
         laserOdometry2.header.stamp = laserOdometry->header.stamp;
-        laserOdometry2.pose.pose.orientation.x = -geoQuat.y;
-        laserOdometry2.pose.pose.orientation.y = -geoQuat.z;
-        laserOdometry2.pose.pose.orientation.z = geoQuat.x;
+        laserOdometry2.pose.pose.orientation.y = -geoQuat.y;
+        laserOdometry2.pose.pose.orientation.z = -geoQuat.z;
+        laserOdometry2.pose.pose.orientation.x = geoQuat.x;
         laserOdometry2.pose.pose.orientation.w = geoQuat.w;
-        laserOdometry2.pose.pose.position.x = transformMapped[3];
-        laserOdometry2.pose.pose.position.y = transformMapped[4];
-        laserOdometry2.pose.pose.position.z = transformMapped[5];
+        laserOdometry2.pose.pose.position.y = transformMapped[3];
+        laserOdometry2.pose.pose.position.z = transformMapped[4];
+        laserOdometry2.pose.pose.position.x = transformMapped[5];
         pubLaserOdometry2.publish(laserOdometry2);
+
         _count++;
         if(_count % 10 == 0){
             std::cout << " " <<std::endl;
-            std::cout << " roll " << transformMapped[2]/M_PI*180 << " pitch " << transformMapped[0]/M_PI*180 << " yaw " << transformMapped[1]/M_PI*180 << " x " << transformMapped[5] << " y " << transformMapped[3] << " z " << transformMapped[4] << std::endl; 
-            std::cout << " vroll " << transformSum[2]/M_PI*180 << " vpitch " << transformSum[0]/M_PI*180 << " vyaw " << transformSum[1]/M_PI*180 << " viox " << transformSum[5] << " vioy " << transformSum[3] << " vioz " << transformSum[4] << std::endl; 
+            std::cout << " lidar: " << "att: [" << transformMapped[2]/M_PI*180 << "," << transformMapped[0]/M_PI*180 << "," << transformMapped[1]/M_PI*180 << "]" << "pos: [" << transformMapped[5] << "," << transformMapped[3] << "," << transformMapped[4]  << "]" << std::endl; 
+            std::cout << " VIO: " << "att: [" << transformSum[2]/M_PI*180 << "," << transformSum[0]/M_PI*180 << "," << transformSum[1]/M_PI*180 << "], pos: [" << transformSum[5] << "," << transformSum[3] << "," << transformSum[4] << "]" << std::endl; 
             std::cout << " " <<std::endl;
             _count = 0;
         }
@@ -237,13 +255,13 @@ public:
         this_pose_stamped.header.frame_id = "/camera_init";
         //    this_pose_stamped.header.child_frame_id = "/camera";
         this_pose_stamped.header.stamp = laserOdometry->header.stamp;
-        this_pose_stamped.pose.orientation.x = -geoQuat1.y;
-        this_pose_stamped.pose.orientation.y = -geoQuat1.z;
-        this_pose_stamped.pose.orientation.z = geoQuat1.x;
-        this_pose_stamped.pose.orientation.w = geoQuat1.w;
-        this_pose_stamped.pose.position.x = transformSum[3];
-        this_pose_stamped.pose.position.y = transformSum[4];
-        this_pose_stamped.pose.position.z = transformSum[5];
+        this_pose_stamped.pose.orientation.y = -geoQuat.y;
+        this_pose_stamped.pose.orientation.z = -geoQuat.z;
+        this_pose_stamped.pose.orientation.x = geoQuat.x;
+        this_pose_stamped.pose.orientation.w = geoQuat.w;
+        this_pose_stamped.pose.position.y = transformMapped[3];
+        this_pose_stamped.pose.position.z = transformMapped[4];
+        this_pose_stamped.pose.position.x = transformMapped[5];
 
         _path.poses.push_back(this_pose_stamped);
 
@@ -255,6 +273,7 @@ public:
         tfBroadcaster2.sendTransform(laserOdometryTrans2);
 
         map_2_camera_init_Trans.stamp_ = laserOdometry->header.stamp;
+        // map_2_camera_init_Trans.setRotation(tf::Quaternion(0,0,0,1));
         map_2_camera_init_Trans.setRotation(tf::Quaternion(0,0,0,1));
         map_2_camera_init_Trans.setOrigin(tf::Vector3(0,0,0));
         tfBroadcasterMap2CameraInit.sendTransform(map_2_camera_init_Trans);
@@ -281,6 +300,7 @@ public:
         transformBefMapped[3] = odomAftMapped->twist.twist.linear.x;
         transformBefMapped[4] = odomAftMapped->twist.twist.linear.y;
         transformBefMapped[5] = odomAftMapped->twist.twist.linear.z;
+        lidar_flag = true;
     }
 };
 

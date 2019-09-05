@@ -866,7 +866,9 @@ public:
     {
         sensor_msgs::PointCloud2 laserCloudOutMsg;
 
+
 	    if (pubCornerPointsSharp.getNumSubscribers() != 0){
+
 	        pcl::toROSMsg(*cornerPointsSharp, laserCloudOutMsg);
 	        laserCloudOutMsg.header.stamp = cloudHeader.stamp;
 	        laserCloudOutMsg.header.frame_id = "/camera";
@@ -1130,12 +1132,13 @@ public:
     void findCorrespondingCornerFeatures(int iterCount){
 
         int cornerPointsSharpNum = cornerPointsSharp->points.size();
+        // std::cout << "corner_points_sharp: "<< cornerPointsSharpNum <<std::endl;
 
         for (int i = 0; i < cornerPointsSharpNum; i++) {
 
             TransformToStart(&cornerPointsSharp->points[i], &pointSel);
 
-            if (iterCount % 5 == 0) {
+            if (iterCount % 5 == 0){ 
 
                 kdtreeCornerLast->nearestKSearch(pointSel, 1, pointSearchInd, pointSearchSqDis);
                 int closestPointInd = -1, minPointInd2 = -1;
@@ -1241,6 +1244,7 @@ public:
     void findCorrespondingSurfFeatures(int iterCount){
 
         int surfPointsFlatNum = surfPointsFlat->points.size();
+        // std::cout <<"surfPointsSharp: "<<surfPointsFlatNum<<std::endl;
 
         for (int i = 0; i < surfPointsFlatNum; i++) {
 
@@ -1895,6 +1899,11 @@ public:
 
         laserCloudCornerLastNum = laserCloudCornerLast->points.size();
         laserCloudSurfLastNum = laserCloudSurfLast->points.size();
+        
+        // std::cout << "surf_size:"<<laserCloudSurfLastNum <<std::endl;
+        // std::cout << "corner_size:"<<laserCloudCornerLastNum <<std::endl;
+        // std::cout<<std::endl;
+        
 
         if (laserCloudCornerLastNum > 10 && laserCloudSurfLastNum > 100) {
             kdtreeCornerLast->setInputCloud(laserCloudCornerLast);
@@ -1942,7 +1951,8 @@ public:
         }else{
             return;
         }
-
+        
+        // ros::Time a = ros::Time::now();
         adjustDistortion(); // pre regist
 
         calculateSmoothness(); // smooth
@@ -1967,6 +1977,8 @@ public:
         publishOdometry();
 
         publishCloudsLast();   
+        // ros::Time b = ros::Time::now();
+        // std ::cout <<"step2_cost: "<< (b-a).toSec() <<std::endl;
     }
 };
 
